@@ -8,7 +8,6 @@ import viVN from 'antd/locale/vi_VN';
  */
 export const antDesignThemeConfig: ThemeConfig = {
   token: {
-    // Nhận diện thương hiệu IoT PTIT
     colorPrimary: '#09353D',
     colorPrimaryHover: '#0e4d58',
     colorPrimaryActive: '#06252b',

@@ -96,14 +96,14 @@ export const SensorFilterBar: React.FC<SensorFilterBarProps> = ({
         </div>
 
         {/* Submit Search Button */}
-        <Button
+        {/* <Button
           type="primary"
           icon={<Search size={14} />}
           onClick={handleSearchSubmit}
           style={{ height: 36 }}
         >
           Tìm kiếm
-        </Button>
+        </Button> */}
 
         {/* Sort Button */}
         <Button

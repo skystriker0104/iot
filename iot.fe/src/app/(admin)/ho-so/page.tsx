@@ -83,7 +83,7 @@ export const ProfilePage: React.FC = () => {
               marginBottom: 16,
             }}
           >
-            Tài nguyên & Đường dẫn liên kết đồ án
+            Tài nguyên & Đường dẫn liên kết 
           </Text>
 
           <Row gutter={[16, 16]}>

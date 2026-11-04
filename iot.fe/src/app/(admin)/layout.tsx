@@ -116,7 +116,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   return (
     <Layout hasSider style={{ height: '100vh', overflow: 'hidden' }}>
-      {/* ─── SIDEBAR ────────────────────────────────────────────────────────── */}
       <Sider
         collapsible
         collapsed={collapsed}
@@ -148,10 +147,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 {!collapsed && (
                   <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     <Text strong style={{ color: '#ffffff', fontSize: 14, display: 'block', lineHeight: 1.2 }}>
-                      IoT Hub PTIT
-                    </Text>
-                    <Text style={{ color: 'rgba(94, 234, 212, 0.9)', fontSize: 11, fontWeight: 500 }}>
-                      Nhóm 11 • ESP8266 MQTT
+                      IoT Hub
                     </Text>
                   </div>
                 )}
@@ -161,17 +157,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {/* Navigation Header */}
             {!collapsed && (
               <NavCategoryContainer>
-                <Text
-                  style={{
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: 'rgba(255, 255, 255, 0.45)',
-                    fontWeight: 600,
-                  }}
-                >
-                  Danh mục chức năng
-                </Text>
+              
               </NavCategoryContainer>
             )}
 
