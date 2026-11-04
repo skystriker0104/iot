@@ -53,9 +53,6 @@ export const SensorChartCard: React.FC<SensorChartCardProps> = ({ chartData }) =
             <Title level={5} style={{ margin: 0, fontSize: 14 }}>
               Biểu đồ biến thiên dữ liệu cảm biến
             </Title>
-            <Tag color="default" style={{ ...MONO, fontSize: 11, fontWeight: 600 }}>
-              20 điểm gần nhất
-            </Tag>
           </Flex>
           <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
             Nhiệt độ (°C) • Ánh sáng (Lux) • Độ ẩm (%)

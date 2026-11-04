@@ -65,9 +65,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
               </Flex>
 
-              <Tag color="cyan" icon={<CheckCircle size={13} style={{ verticalAlign: -1, marginRight: 4 }} />} style={{ margin: 0, padding: '4px 12px', fontSize: 12, fontWeight: 500 }}>
-                Đồ án IoT & Ứng dụng
-              </Tag>
+            
             </Flex>
           )}
         </Card>

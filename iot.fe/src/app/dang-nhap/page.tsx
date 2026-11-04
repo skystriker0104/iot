@@ -71,28 +71,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           >
             <Cpu size={24} color="#5eead4" />
           </div>
-          <div>
-            <span
-              style={{
-                display: 'inline-block',
-                padding: '4px 12px',
-                borderRadius: 999,
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                color: '#5eead4',
-                fontSize: 12,
-                fontWeight: 500,
-                marginBottom: 6,
-              }}
-            >
-              Học viện Công nghệ Bưu chính Viễn thông
-            </span>
-          </div>
+          
           <Title level={3} style={{ color: '#ffffff', margin: 0, fontSize: 20 }}>
             Hệ thống Giám sát & Điều khiển IoT
           </Title>
-          <Text style={{ color: '#94a3b8', fontSize: 12, display: 'block', marginTop: 4 }}>
-            Giao thức MQTT • Bộ môn IoT và Ứng dụng
-          </Text>
+        
         </div>
 
         {/* Login Card */}
@@ -113,9 +96,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 Xác thực tài khoản và quyền truy cập
               </Text>
             </div>
-            <Tag color="success" style={{ margin: 0, fontWeight: 500 }}>
-              Mock Ready
-            </Tag>
+            
           </Flex>
 
           {activeError && (
@@ -134,7 +115,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 prefix={<User size={16} color="#94a3b8" />}
-                placeholder="Nhập tên đăng nhập hoặc mã sinh viên"
+                placeholder="Nhập tên đăng nhập"
               />
             </Form.Item>
 
@@ -170,59 +151,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </Button>
           </Form>
 
-          {/* Quick Demo Credentials Autofill */}
-          <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid #f1f5f9' }}>
-            <Text
-              type="secondary"
-              style={{
-                fontSize: 11,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                fontWeight: 600,
-                display: 'block',
-                textAlign: 'center',
-                marginBottom: 8,
-              }}
-            >
-              Tài khoản mẫu khảo sát
-            </Text>
-
-            <Space direction="vertical" size={8} style={{ width: '100%' }}>
-              {DEMO_ACCOUNTS.map((acc) => (
-                <div
-                  key={acc.username}
-                  onClick={() => handleFillDemo(acc.username, acc.pass)}
-                  style={{
-                    padding: 10,
-                    borderRadius: 8,
-                    border: '1px solid #e2e8f0',
-                    backgroundColor: '#f8fafc',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <Flex justify="space-between" align="center">
-                    <Text strong style={{ fontSize: 12, color: '#334155' }}>
-                      {acc.title}
-                    </Text>
-                    <Key size={12} color="#94a3b8" />
-                  </Flex>
-                  <Text type="secondary" style={{ fontSize: 11, fontFamily: 'monospace', display: 'block', marginTop: 2 }}>
-                    {acc.roleDescription}
-                  </Text>
-                </div>
-              ))}
-            </Space>
-          </div>
+        
 
           {/* Student Footer attribution */}
-          <div style={{ marginTop: 20, textAlign: 'center', fontSize: 12, color: '#64748b' }}>
-            Sinh viên: <Text strong style={{ color: '#0f172a' }}>Nguyễn Văn An</Text> — MSV:{' '}
-            <Text strong style={{ color: '#09353D', fontFamily: 'monospace' }}>
-              B23DCCN005
-            </Text>{' '}
-            (Nhóm 11)
-          </div>
+          
         </Card>
       </div>
     </div>

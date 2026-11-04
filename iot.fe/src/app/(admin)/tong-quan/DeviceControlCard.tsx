@@ -77,9 +77,7 @@ export const DeviceControlCard: React.FC = () => {
           <Title level={5} style={{ margin: 0, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Điều khiển ngoại vi
           </Title>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            Lệnh thời gian thực qua MQTT / SignalR
-          </Text>
+          
         </div>
         <Tag color="success" style={{ margin: 0, fontWeight: 600 }}>
           {onlineCount} Online

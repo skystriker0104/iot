@@ -59,23 +59,7 @@ export const SensorDataPage: React.FC = () => {
   return (
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
-        {/* Header banner với Huy hiệu trạng thái SignalR Realtime */}
-        <Card styles={{ body: { padding: 16 } }} style={{ borderRadius: 12, borderColor: '#e2e8f0' }}>
-          <Flex justify="space-between" align="center" wrap="wrap" gap={12}>
-            <div>
-              <Title level={4} style={{ margin: 0, fontSize: 16 }}>
-                Quản lý Lịch sử Dữ liệu Cảm biến
-              </Title>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Chuỗi thời gian các số đo Nhiệt độ, Ánh sáng, Độ ẩm từ nút cảm biến ESP8266 qua MQTT & SignalR
-              </Text>
-            </div>
-            <Tag color="success" style={{ margin: 0, fontWeight: 600, padding: '4px 10px' }}>
-              <Badge status="processing" color="#10B981" text={<span style={{ color: '#047857', fontWeight: 600 }}>SignalR Realtime</span>} />
-            </Tag>
-          </Flex>
-        </Card>
-
+       
         {/* Filter Toolbar */}
         <SensorFilterBar
           appliedSearch={search}

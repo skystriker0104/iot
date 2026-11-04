@@ -23,3 +23,16 @@ html, body {
 #root {
   height: 100%;
 }
+
+/* Đảm bảo số trang đang chọn (active) trong Ant Design Pagination hiển thị chữ trắng rõ ràng */
+.ant-pagination .ant-pagination-item-active {
+  background-color: #09353D !important;
+  border-color: #09353D !important;
+}
+
+.ant-pagination .ant-pagination-item-active a,
+.ant-pagination .ant-pagination-item-active:hover a,
+.ant-pagination .ant-pagination-item-active span {
+  color: #ffffff !important;
+}
+

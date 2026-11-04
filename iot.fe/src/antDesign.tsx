@@ -107,6 +107,8 @@ export const antDesignThemeConfig: ThemeConfig = {
     },
     Pagination: {
       itemActiveBg: '#09353D',
+      itemActiveColor: '#FFFFFF',
+      itemActiveColorHover: '#FFFFFF',
       borderRadius: 8,
       fontSize: 12,
     },

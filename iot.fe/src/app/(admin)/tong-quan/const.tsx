@@ -1,7 +1,7 @@
 import type { ChartTabItem, DeviceControlConfig } from './type';
 
 export const CHART_TABS: ChartTabItem[] = [
-  { id: 'all', label: 'Tất cả (3 đường)' },
+  { id: 'all', label: 'Tất cả' },
   { id: 'temp', label: 'Nhiệt độ' },
   { id: 'light', label: 'Ánh sáng' },
   { id: 'humidity', label: 'Độ ẩm' },
