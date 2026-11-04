@@ -5,6 +5,7 @@ import { useAppStore } from '../../../stores/useAppStore';
 import { SensorFilterBar } from './SensorFilterBar';
 import { SensorDataTable } from './SensorDataTable';
 import { useSensorDataQuery, queryKeys } from '../../../lib/queries';
+import { useDebounce } from '../../../lib/hooks';
 
 const { Title, Text } = Typography;
 
@@ -19,12 +20,14 @@ export const SensorDataPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isResetting, setIsResetting] = useState(false);
 
+  const debouncedSearch = useDebounce(search, 500);
+
   const { data: pagedData, isLoading } = useSensorDataQuery({
     page: currentPage,
     pageSize: limit,
     sensorType: sensorTypeFilter,
     sortOrder,
-    search,
+    search: debouncedSearch,
   });
 
   const records = pagedData?.items || [];
@@ -69,7 +72,6 @@ export const SensorDataPage: React.FC = () => {
           onToggleSortOrder={handleToggleSortOrder}
         />
 
-        {/* Table Box with Ant Design Pagination */}
         <Card
           styles={{ body: { padding: 0 } }}
           style={{

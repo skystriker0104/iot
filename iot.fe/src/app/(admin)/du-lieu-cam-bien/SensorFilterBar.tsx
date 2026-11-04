@@ -3,6 +3,7 @@ import { Card, Input, Select, Button, Flex, Typography } from 'antd';
 import type { InputRef } from 'antd';
 import { Search, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import { SENSOR_TYPE_OPTIONS } from './const';
+import { useDebounce } from '../../../lib/hooks';
 
 const { Text } = Typography;
 
@@ -29,18 +30,22 @@ export const SensorFilterBar: React.FC<SensorFilterBarProps> = ({
   const [sensorType, setSensorType] = useState(appliedSensorType);
   const searchInputRef = useRef<InputRef>(null);
 
+  // Debounce 500ms cho ô nhập từ khóa tìm kiếm
+  const debouncedKeyword = useDebounce(keyword, 500);
+
   const handleKeywordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setKeyword(e.target.value);
   }, []);
 
   const handleSensorTypeChange = useCallback((val: string) => {
     setSensorType(val);
+    onSearch({ keyword: keyword.trim(), sensorType: val });
     if (val === 'time') {
       setTimeout(() => {
         searchInputRef.current?.focus();
       }, 50);
     }
-  }, []);
+  }, [keyword, onSearch]);
 
   const handleSearchSubmit = useCallback(() => {
     onSearch({ keyword: keyword.trim(), sensorType });
@@ -51,6 +56,12 @@ export const SensorFilterBar: React.FC<SensorFilterBarProps> = ({
     setSensorType('all');
     onReset();
   }, [onReset]);
+
+  useEffect(() => {
+    if (debouncedKeyword.trim() !== appliedSearch.trim()) {
+      onSearch({ keyword: debouncedKeyword.trim(), sensorType });
+    }
+  }, [debouncedKeyword, sensorType, appliedSearch, onSearch]);
 
   useEffect(() => {
     setKeyword(appliedSearch);

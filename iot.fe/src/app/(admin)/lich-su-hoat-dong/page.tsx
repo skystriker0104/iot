@@ -3,6 +3,7 @@ import { Card, Pagination, Typography, Space, Flex } from 'antd';
 import { ActionFilterBar } from './ActionFilterBar';
 import { ActionDataTable } from './ActionDataTable';
 import { useActionHistoryQuery } from '../../../lib/queries';
+import { useDebounce } from '../../../lib/hooks';
 
 const { Text } = Typography;
 
@@ -14,13 +15,15 @@ export const ActivityLogPage: React.FC = () => {
   const [limit, setLimit] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const debouncedSearch = useDebounce(search, 500);
+
   const { data: pagedData, isLoading } = useActionHistoryQuery({
     page: currentPage,
     pageSize: limit,
     device: deviceFilter,
     action: actionFilter,
     status: statusFilter,
-    search,
+    search: debouncedSearch,
   });
 
   const records = pagedData?.items || [];
