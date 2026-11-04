@@ -11,11 +11,13 @@ export function useLoginMutation(
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<AuthUser, Error, LoginCredentials>({
+  return useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
       return await loginApi(credentials);
     },
-    onSuccess: (user, variables, context) => {
+    ...options,
+    onSuccess: (...args) => {
+      const [user] = args;
       useAuthStore.setState({
         authUser: user,
         isAuthenticated: true,
@@ -24,16 +26,16 @@ export function useLoginMutation(
       });
       // Invalidate toàn bộ cache để nạp dữ liệu phiên mới
       queryClient.invalidateQueries();
-      options?.onSuccess?.(user, variables, context);
+      (options?.onSuccess as any)?.(...args);
     },
-    onError: (err, variables, context) => {
+    onError: (...args) => {
+      const [err] = args;
       useAuthStore.setState({
         isLoading: false,
-        error: err.message || 'Đăng nhập thất bại',
+        error: err?.message || 'Đăng nhập thất bại',
       });
-      options?.onError?.(err, variables, context);
+      (options?.onError as any)?.(...args);
     },
-    ...options,
   });
 }
 
@@ -43,17 +45,16 @@ export function useLoginMutation(
 export function useLogoutMutation(options?: UseMutationOptions<void, Error, void>) {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, void>({
+  return useMutation({
     mutationFn: async () => {
       await logoutApi();
     },
-    onSuccess: (data, variables, context) => {
+    ...options,
+    onSuccess: (...args) => {
       useAuthStore.getState().logout();
       // Xóa toàn bộ bộ nhớ đệm truy vấn
       queryClient.clear();
-      options?.onSuccess?.(data, variables, context);
+      (options?.onSuccess as any)?.(...args);
     },
-    ...options,
   });
 }
-
