@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace IotServer.Controllers;
 
+[Route("api/profile")]
 [Route("api/v1/profile")]
 public class ProfileController(IProfileService service) : ApiControllerBase
 {

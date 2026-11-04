@@ -2,302 +2,335 @@
 #include <PubSubClient.h>
 #include <DHT.h>
 
-const char* ssid = "Galaxy S21 5G 4093";
-const char* wifiPassword = "kocodouu";
+// ===== WIFI =====
+const char* ssid = "Na";
+const char* password = "01042005";
 
-const char* mqttServer = "192.168.1.5";
-const int mqttPort = 34215;
-const char* mqttUser = "NguyenAnhTu";
-const char* mqttPassword = "B23DCCN872";
+// ===== MQTT =====
+const char* mqtt_server = "172.20.10.3";
+const int mqtt_port = 1883;
+const char* mqtt_user = "";
+const char* mqtt_pass = "";
 
-#define DHTPIN D2
+// ===== CAM BIEN =====
+#define DHTPIN D5
 #define DHTTYPE DHT11
-
-#define GREEN_LED D4
-#define RED_LED D0
-#define YELLOW_LED D3
+#define LIGHT_PIN A0
 
 DHT dht(DHTPIN, DHTTYPE);
 
-WiFiClient wifiClient;
-PubSubClient client(wifiClient);
+// ===== LED =====
+#define LED1_PIN D6
+#define LED2_PIN D7
+#define LED3_PIN D8
 
-unsigned long lastSend = 0;
+const char* device_id = "esp8266_01";
 
-void connectWiFi() {
+// ===== MQTT CLIENT =====
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+// ===== TOPIC DIEU KHIEN =====
+const char* topicLed1 = "iot/esp8266_01/led1/set";
+const char* topicLed2 = "iot/esp8266_01/led2/set";
+const char* topicLed3 = "iot/esp8266_01/led3/set";
+const char* topicAllLeds = "iot/esp8266_01/leds/set";
+
+// ===== TOPIC LENH HELLO =====
+const char* topicHelloCmd = "iot/esp8266_01/hello/set";  // gui lenh vao day
+const char* topicTest = "iot/esp8266_01/test";           // ESP ban "hello" ra day
+
+// ===== TOPIC TRANG THAI =====
+const char* topicLed1Status = "iot/esp8266_01/led1/status";
+const char* topicLed2Status = "iot/esp8266_01/led2/status";
+const char* topicLed3Status = "iot/esp8266_01/led3/status";
+
+// ===== TOPIC CAM BIEN =====
+const char* topicSensors = "iot/esp8266_01/sensors";
+
+// ===== KET NOI WIFI =====
+void setup_wifi() {
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, wifiPassword);
+  WiFi.begin(ssid, password);
 
-  Serial.print("Ket noi WiFi");
+  Serial.print("Dang ket noi WiFi");
 
-  while (WiFi.status() != WL_CONNECTED) {
+  int retry = 0;
+
+  while (WiFi.status() != WL_CONNECTED && retry < 40) {
     delay(500);
     Serial.print(".");
+    retry++;
   }
 
-  Serial.println();
-  Serial.println("WiFi OK");
-
-  Serial.print("IP ESP8266: ");
-  Serial.println(WiFi.localIP());
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nDa ket noi WiFi!");
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\nKhong ket noi duoc WiFi!");
+  }
 }
 
-void sendLedStatus(
-  int deviceId,
-  String deviceName,
-  String action,
-  String status,
-  String state
-) {
-  String data =
-    "{\"deviceId\":" + String(deviceId) +
-    ",\"deviceName\":\"" + deviceName + "\"" +
-    ",\"action\":\"" + action + "\"" +
-    ",\"status\":\"" + status + "\"" +
-    ",\"state\":\"" + state + "\"}";
+// ===== DANG KY MQTT VA KIEM TRA =====
+bool subscribeTopic(const char* topic) {
+  bool result = client.subscribe(topic);
 
-  client.publish("esp_status", data.c_str());
+  Serial.print(result ? "OK - Da subscribe: "
+                      : "LOI - Subscribe that bai: ");
+  Serial.println(topic);
 
-  Serial.println(data);
+  return result;
 }
 
-void controlLed(
-  int pin,
-  int deviceId,
-  String deviceName,
-  String action
-) {
-  if (action == "ON") {
-    digitalWrite(pin, HIGH);
-  }
-  else if (action == "OFF") {
-    digitalWrite(pin, LOW);
-  }
-  else {
-    sendLedStatus(
-      deviceId,
-      deviceName,
-      action,
-      "failed",
-      "UNKNOWN"
-    );
+// ===== GUI TRANG THAI LED =====
+void publishLedStatus() {
+  if (!client.connected()) return;
 
-    return;
-  }
+  client.publish(
+    topicLed1Status,
+    digitalRead(LED1_PIN) == HIGH ? "ON" : "OFF",
+    true
+  );
 
-  String state =
-    digitalRead(pin) == HIGH ? "ON" : "OFF";
+  client.publish(
+    topicLed2Status,
+    digitalRead(LED2_PIN) == HIGH ? "ON" : "OFF",
+    true
+  );
 
-  String status =
-    (state == action) ? "success" : "failed";
-
-  sendLedStatus(
-    deviceId,
-    deviceName,
-    action,
-    status,
-    state
+  client.publish(
+    topicLed3Status,
+    digitalRead(LED3_PIN) == HIGH ? "ON" : "OFF",
+    true
   );
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
-  String message = "";
+// ===== DIEU KHIEN CA 3 LED =====
+void controlAllLeds(const String& message) {
+  if (message == "ON") {
+    digitalWrite(LED1_PIN, HIGH);
+    digitalWrite(LED2_PIN, HIGH);
+    digitalWrite(LED3_PIN, HIGH);
+
+    Serial.println("DA BAT CA 3 DEN LED!");
+  } else if (message == "OFF") {
+    digitalWrite(LED1_PIN, LOW);
+    digitalWrite(LED2_PIN, LOW);
+    digitalWrite(LED3_PIN, LOW);
+
+    Serial.println("DA TAT CA 3 DEN LED!");
+  } else {
+    Serial.print("Lenh khong hop le: [");
+    Serial.print(message);
+    Serial.println("]. Chi chap nhan ON/OFF.");
+    return;
+  }
+
+  publishLedStatus();
+}
+
+// ===== DIEU KHIEN TUNG LED =====
+void controlLed(
+  int pin,
+  const char* ledName,
+  const char* statusTopic,
+  const String& message
+) {
+  if (message == "ON") {
+    digitalWrite(pin, HIGH);
+    client.publish(statusTopic, "ON", true);
+
+    Serial.print(ledName);
+    Serial.println(" DA BAT");
+  } else if (message == "OFF") {
+    digitalWrite(pin, LOW);
+    client.publish(statusTopic, "OFF", true);
+
+    Serial.print(ledName);
+    Serial.println(" DA TAT");
+  } else {
+    Serial.println("Lenh khong hop le! Chi chap nhan ON/OFF.");
+  }
+}
+
+// ===== BAN CHU HELLO =====
+void sendHello() {
+  if (client.publish(topicTest, "hello")) {
+    Serial.println("Da ban chu hello!");
+  } else {
+    Serial.println("Ban chu hello that bai!");
+  }
+}
+
+// ===== NHAN LENH MQTT =====
+void callback(
+  char* topic,
+  byte* payload,
+  unsigned int length
+) {
+  String topicStr = String(topic);
+  String message;
+  message.reserve(length);
 
   for (unsigned int i = 0; i < length; i++) {
     message += (char)payload[i];
   }
 
-  if (String(topic) != "led_control") {
-    return;
-  }
+  message.trim();
+  message.toUpperCase();
 
-  if (message == "green_on") {
+  Serial.print("Topic: ");
+  Serial.println(topicStr);
+  Serial.print("Payload: ");
+  Serial.println(message);
+
+  if (topicStr == topicAllLeds) {
+    controlAllLeds(message);
+  } else if (topicStr == topicLed1) {
     controlLed(
-      GREEN_LED,
-      1,
-      "GREEN_LED",
-      "ON"
+      LED1_PIN, "LED1 D6",
+      topicLed1Status, message
     );
-  }
-
-  else if (message == "green_off") {
+  } else if (topicStr == topicLed2) {
     controlLed(
-      GREEN_LED,
-      1,
-      "GREEN_LED",
-      "OFF"
+      LED2_PIN, "LED2 D7",
+      topicLed2Status, message
     );
-  }
-
-  else if (message == "red_on") {
+  } else if (topicStr == topicLed3) {
     controlLed(
-      RED_LED,
-      2,
-      "RED_LED",
-      "ON"
+      LED3_PIN, "LED3 D8",
+      topicLed3Status, message
     );
+  } else if (topicStr == topicHelloCmd) {
+    sendHello();  
+  } else {
+    Serial.println("Topic khong hop le!");
   }
 
-  else if (message == "red_off") {
-    controlLed(
-      RED_LED,
-      2,
-      "RED_LED",
-      "OFF"
-    );
-  }
-
-  else if (message == "yellow_on") {
-    controlLed(
-      YELLOW_LED,
-      3,
-      "YELLOW_LED",
-      "ON"
-    );
-  }
-
-  else if (message == "yellow_off") {
-    controlLed(
-      YELLOW_LED,
-      3,
-      "YELLOW_LED",
-      "OFF"
-    );
-  }
-
-  else if (message == "all_on") {
-    controlLed(GREEN_LED, 1, "GREEN_LED", "ON");
-    controlLed(RED_LED, 2, "RED_LED", "ON");
-    controlLed(YELLOW_LED, 3, "YELLOW_LED", "ON");
-  }
-
-  else if (message == "all_off") {
-    controlLed(GREEN_LED, 1, "GREEN_LED", "OFF");
-    controlLed(RED_LED, 2, "RED_LED", "OFF");
-    controlLed(YELLOW_LED, 3, "YELLOW_LED", "OFF");
-  }
-
-  else {
-    sendLedStatus(
-      0,
-      "UNKNOWN",
-      message,
-      "failed",
-      "UNKNOWN"
-    );
-  }
+  Serial.println("====================================");
 }
 
-void connectMQTT() {
+// ===== KET NOI LAI MQTT =====
+void reconnect_mqtt() {
   while (!client.connected()) {
+    if (WiFi.status() != WL_CONNECTED) {
+      return;
+    }
 
-    Serial.print("Ket noi MQTT...");
+    Serial.println("Dang ket noi MQTT...");
 
-    if (client.connect(
-          "ESP8266",
-          mqttUser,
-          mqttPassword
-        )) {
+    String clientId = "ESP8266-";
+    clientId += device_id;
 
-      Serial.println("OK");
+    bool connected;
 
-      client.subscribe("led_control");
-
+    if (strlen(mqtt_user) == 0) {
+      connected = client.connect(clientId.c_str());
     } else {
+      connected = client.connect(
+        clientId.c_str(),
+        mqtt_user,
+        mqtt_pass
+      );
+    }
 
-      Serial.print("Loi: ");
+    if (connected) {
+      Serial.println("Ket noi MQTT thanh cong!");
+
+      // Dang ky tung topic va in ket qua
+      bool sub1 = subscribeTopic(topicLed1);
+      bool sub2 = subscribeTopic(topicLed2);
+      bool sub3 = subscribeTopic(topicLed3);
+      bool subAll = subscribeTopic(topicAllLeds);
+      bool subHello = subscribeTopic(topicHelloCmd);
+
+      if (sub1 && sub2 && sub3 && subAll && subHello) {
+        Serial.println("DA DANG KY DU 5 TOPIC DIEU KHIEN!");
+      } else {
+        Serial.println("CAN KIEM TRA LAI TOPIC MQTT!");
+      }
+
+      publishLedStatus();
+    } else {
+      Serial.print("Ket noi MQTT that bai, rc=");
       Serial.println(client.state());
-
-      delay(5000);
+      delay(3000);
     }
   }
 }
 
-void publishSensors() {
-  float temp = dht.readTemperature();
-  float humidity = dht.readHumidity();
-
-  int light = analogRead(A0);
-
-  light = map(light, 0, 1023, 100, 0);
-  light = constrain(light, 0, 100);
-
-  if (!isnan(temp)) {
-    String tempData =
-      "{\"temp\":" + String(temp, 1) + "}";
-
-    client.publish(
-      "temp_data",
-      tempData.c_str()
-    );
-  }
-
-  if (!isnan(humidity)) {
-    String humidityData =
-      "{\"humidity\":" + String(humidity, 1) + "}";
-
-    client.publish(
-      "humidity_data",
-      humidityData.c_str()
-    );
-  }
-
-  String lightData =
-    "{\"light\":" + String(light) + "}";
-
-  client.publish(
-    "light_data",
-    lightData.c_str()
-  );
-
-  if (!isnan(temp) && !isnan(humidity)) {
-    String sensorData =
-      "{\"temp\":" + String(temp, 1) +
-      ",\"humidity\":" + String(humidity, 1) +
-      ",\"light\":" + String(light) +
-      "}";
-
-    client.publish(
-      "sensor_data",
-      sensorData.c_str()
-    );
-
-    Serial.println(sensorData);
-  }
-}
-
+// ===== SETUP =====
 void setup() {
   Serial.begin(115200);
+  delay(1000);
 
-  pinMode(GREEN_LED, OUTPUT);
-  pinMode(RED_LED, OUTPUT);
-  pinMode(YELLOW_LED, OUTPUT);
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+  pinMode(LED3_PIN, OUTPUT);
 
-  digitalWrite(GREEN_LED, LOW);
-  digitalWrite(RED_LED, LOW);
-  digitalWrite(YELLOW_LED, LOW);
+  // Tat LED khi khoi dong
+  digitalWrite(LED1_PIN, LOW);
+  digitalWrite(LED2_PIN, LOW);
+  digitalWrite(LED3_PIN, LOW);
 
   dht.begin();
 
-  connectWiFi();
+  setup_wifi();
 
-  client.setServer(
-    mqttServer,
-    mqttPort
-  );
-
+  client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
+  client.setBufferSize(512);
 }
 
+// ===== LOOP =====
 void loop() {
-  if (!client.connected()) {
-    connectMQTT();
+  // Thu ket noi lai WiFi khi mat ket noi
+  if (WiFi.status() != WL_CONNECTED) {
+    static unsigned long lastWifiRetry = 0;
+
+    if (millis() - lastWifiRetry >= 5000) {
+      lastWifiRetry = millis();
+      setup_wifi();
+    }
+
+    return;
   }
 
+  // Ket noi lai MQTT
+  if (!client.connected()) {
+    reconnect_mqtt();
+  }
+
+  // Xu ly MQTT lien tuc
   client.loop();
 
-  if (millis() - lastSend >= 2000) {
-    lastSend = millis();
-    publishSensors();
+  // Doc cam bien moi 3 giay
+  static unsigned long lastMsg = 0;
+
+  if (millis() - lastMsg >= 3000) {
+    lastMsg = millis();
+
+    float temp = dht.readTemperature();
+    float hum = dht.readHumidity();
+    int light = analogRead(LIGHT_PIN);
+
+    if (isnan(temp) || isnan(hum)) {
+      Serial.println("Doc DHT11 that bai!");
+      return;
+    }
+
+    String payload =
+      "{\"temperature\":" + String(temp, 1) +
+      ",\"humidity\":" + String(hum, 1) +
+      ",\"light\":" + String(light) + "}";
+
+    if (client.publish(topicSensors, payload.c_str())) {
+      Serial.println("Da gui du lieu cam bien:");
+      Serial.println(payload);
+    } else {
+      Serial.println("Gui du lieu cam bien that bai!");
+    }
   }
 }
+

@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace IotServer.Controllers;
 
+// Endpoint chuẩn DOCX Mục 3.4.2: GET /api/device-activity
+[Route("api/device-activity")]
 [Route("api/v1/action-history")]
 public class ActionHistoryController(IActionHistoryService service) : ApiControllerBase
 {

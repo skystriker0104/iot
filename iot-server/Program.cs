@@ -1,6 +1,7 @@
 using System.Text;
 using IotServer.Data;
 using IotServer.Dtos.Common;
+using IotServer.Hubs;
 using IotServer.Mapping;
 using IotServer.Middleware;
 using IotServer.Mqtt;
@@ -12,7 +13,7 @@ using IotServer.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,9 @@ builder.Services.AddScoped<ISensorRepository, SensorRepository>();
 builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
 builder.Services.AddScoped<ISensorDataRepository, SensorDataRepository>();
 builder.Services.AddScoped<IActionHistoryRepository, ActionHistoryRepository>();
+
+// ---- SignalR ----
+builder.Services.AddSignalR();
 
 // ---- MQTT ----
 builder.Services.AddSingleton<LatestSensorCache>();
@@ -84,36 +88,33 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
-// OpenAPI + nút Authorize (Bearer) trên Swagger UI
-builder.Services.AddOpenApi(options =>
+// Swagger / OpenAPI .NET 8
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
 {
-    options.AddDocumentTransformer((document, context, ct) =>
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "IotServer API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        document.Components ??= new OpenApiComponents();
-        document.Components.SecuritySchemes = new Dictionary<string, IOpenApiSecurityScheme>
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
-            ["Bearer"] = new OpenApiSecurityScheme
+            new OpenApiSecurityScheme
             {
-                Type = SecuritySchemeType.Http,
-                Scheme = "bearer",
-                In = ParameterLocation.Header,
-                BearerFormat = "JWT"
-            }
-        };
-
-        if (document.Paths != null)
-        {
-            foreach (var operation in document.Paths.Values.SelectMany(p => p.Operations ?? []))
-            {
-                operation.Value.Security ??= [];
-                operation.Value.Security.Add(new OpenApiSecurityRequirement
+                Reference = new OpenApiReference
                 {
-                    [new OpenApiSecuritySchemeReference("Bearer", document)] = []
-                });
-            }
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
         }
-
-        return Task.CompletedTask;
     });
 });
 
@@ -126,13 +127,17 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(db);
 }
 
-// ---- Pipeline (thứ tự quan trọng) ----
+// ---- Pipeline ----
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
-    app.UseSwaggerUI(o => o.SwaggerEndpoint("/openapi/v1.json", "IotServer v1"));
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "IotServer API v1");
+        c.RoutePrefix = "swagger";
+    });
     app.MapGet("/", () => Results.Redirect("/swagger"));
 }
 
@@ -143,5 +148,6 @@ app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<IotHub>("/hubs/iot");
 
 app.Run();

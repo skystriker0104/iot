@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace IotServer.Controllers;
 
+[Route("api/auth")]
 [Route("api/v1/auth")]
 public class AuthController(IAuthService auth) : ApiControllerBase
 {
