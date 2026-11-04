@@ -23,9 +23,9 @@ export const PROFILE_RESOURCES: ProfileResourceItem[] = [
     icon: Zap,
   },
   {
-    title: 'Báo cáo Bài tập lớn (DOCX)',
+    title: 'Báo cáo Đồ án (Google Docs)',
     desc: 'Báo cáo Bài tập lớn: Hệ thống Giám sát và Điều khiển IoT',
-    url: 'https://github.com/skystriker0104/iot/blob/main/B%C3%A1o%20c%C3%A1o%20B%C3%A0i%20t%E1%BA%ADp%20l%E1%BB%9Bn_%20H%E1%BB%87%20th%E1%BB%91ng%20Gi%C3%A1m%20s%C3%A1t%20v%C3%A0%20%C4%90i%E1%BB%81u%20khi%E1%BB%83n%20IoT%20(1)%20(1).docx',
+    url: 'https://docs.google.com/document/d/1gKUNnneHFuOQymIs5gfLBlrpzi6cFo4D/edit?usp=sharing&ouid=116737155529638929944&rtpof=true&sd=true',
     icon: FileText,
   },
 ];

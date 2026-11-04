@@ -1,7 +1,26 @@
-import React, { useCallback, useMemo } from 'react';
-import { Layout, Menu, Dropdown, Avatar, Button, Typography, Space, Flex, Badge, Divider } from 'antd';
+import React, { useState, useCallback, useMemo } from 'react';
+import {
+  Layout,
+  Menu,
+  Dropdown,
+  Avatar,
+  Button,
+  Typography,
+  Flex,
+  Badge,
+  Divider,
+  Tooltip,
+} from 'antd';
 import type { MenuProps } from 'antd';
-import { Cpu, LogOut, User, ShieldCheck, ChevronDown } from 'lucide-react';
+import {
+  Cpu,
+  LogOut,
+  User,
+  ShieldCheck,
+  ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from 'lucide-react';
 import { useAppStore } from '../../stores/useAppStore';
 import { useProfileQuery } from '../../lib/queries';
 import { useLogoutMutation } from '../../lib/mutations';
@@ -24,6 +43,7 @@ const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
+  const [collapsed, setCollapsed] = useState(false);
   const { data: profile } = useProfileQuery();
   const logoutMutation = useLogoutMutation();
   const { currentPageSlug, setCurrentPageSlug } = useAppStore();
@@ -70,7 +90,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {
         key: 'mode',
         icon: <ShieldCheck size={14} color="#10B981" />,
-        label: 'Chế độ: Mock Data Tự chủ',
+        label: 'Chế độ: SignalR Realtime',
       },
       { type: 'divider' },
       {
@@ -98,52 +118,68 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     <Layout hasSider style={{ height: '100vh', overflow: 'hidden' }}>
       {/* ─── SIDEBAR ────────────────────────────────────────────────────────── */}
       <Sider
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        trigger={null}
         width={256}
+        collapsedWidth={72}
         style={{
           background: '#062329',
           borderRight: '1px solid rgba(13, 64, 74, 0.6)',
           height: '100vh',
           flexShrink: 0,
+          transition: 'all 0.2s ease',
         }}
       >
         <Flex vertical justify="space-between" style={{ height: '100%' }}>
           <div>
             {/* Brand Header */}
-            <BrandHeader>
-              <Flex align="center" gap={12}>
+            <BrandHeader
+              style={{
+                padding: collapsed ? '16px 8px' : '16px 20px',
+                transition: 'padding 0.2s ease',
+              }}
+            >
+              <Flex align="center" justify={collapsed ? 'center' : 'flex-start'} gap={12}>
                 <BrandLogoBox>
                   <Cpu size={20} color="#5eead4" />
                 </BrandLogoBox>
-                <div>
-                  <Text strong style={{ color: '#ffffff', fontSize: 14, display: 'block', lineHeight: 1.2 }}>
-                    IoT Hub PTIT
-                  </Text>
-                  <Text style={{ color: 'rgba(94, 234, 212, 0.9)', fontSize: 11, fontWeight: 500 }}>
-                    Nhóm 11 • ESP8266 MQTT
-                  </Text>
-                </div>
+                {!collapsed && (
+                  <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    <Text strong style={{ color: '#ffffff', fontSize: 14, display: 'block', lineHeight: 1.2 }}>
+                      IoT Hub PTIT
+                    </Text>
+                    <Text style={{ color: 'rgba(94, 234, 212, 0.9)', fontSize: 11, fontWeight: 500 }}>
+                      Nhóm 11 • ESP8266 MQTT
+                    </Text>
+                  </div>
+                )}
               </Flex>
             </BrandHeader>
 
             {/* Navigation Header */}
-            <NavCategoryContainer>
-              <Text
-                style={{
-                  fontSize: 10,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'rgba(255, 255, 255, 0.45)',
-                  fontWeight: 600,
-                }}
-              >
-                Danh mục chức năng
-              </Text>
-            </NavCategoryContainer>
+            {!collapsed && (
+              <NavCategoryContainer>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'rgba(255, 255, 255, 0.45)',
+                    fontWeight: 600,
+                  }}
+                >
+                  Danh mục chức năng
+                </Text>
+              </NavCategoryContainer>
+            )}
 
             {/* Ant Design Navigation Menu */}
             <Menu
               theme="dark"
               mode="inline"
+              inlineCollapsed={collapsed}
               selectedKeys={[currentPageSlug]}
               onClick={({ key }) => handleNavClick(key)}
               items={navMenuItems}
@@ -152,43 +188,93 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </div>
 
           {/* Sidebar Footer: Hardware Status & Logout */}
-          <SidebarFooter>
-            {/* MQTT Live Connection Pill */}
-            <MqttStatusCard>
-              <Flex justify="space-between" align="center" style={{ marginBottom: 4 }}>
-                <Text
+          <SidebarFooter
+            style={{
+              padding: collapsed ? '12px 8px' : '16px',
+              transition: 'padding 0.2s ease',
+            }}
+          >
+            {!collapsed ? (
+              <>
+                {/* MQTT Live Connection Pill */}
+                <MqttStatusCard>
+                  <Flex justify="space-between" align="center" style={{ marginBottom: 4 }}>
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        textTransform: 'uppercase',
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      MQTT Broker
+                    </Text>
+                    <Badge
+                      status="processing"
+                      color="#34d399"
+                      text={<span style={{ color: '#34d399', fontSize: 10, fontWeight: 600 }}>ONLINE</span>}
+                    />
+                  </Flex>
+                  <Flex align="center" gap={6}>
+                    <MqttIndicatorDot />
+                    <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 11, fontFamily: 'monospace' }}>
+                      broker.emqx.io:1883
+                    </Text>
+                  </Flex>
+                </MqttStatusCard>
+
+                {/* Logout button */}
+                <Button
+                  block
+                  icon={<LogOut size={14} />}
+                  onClick={handleLogoutClick}
                   style={{
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    fontWeight: 600,
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: 'rgba(255, 255, 255, 0.15)',
+                    color: 'rgba(255, 255, 255, 0.85)',
                   }}
                 >
-                  MQTT Broker
-                </Text>
-                <Badge status="processing" color="#34d399" text={<span style={{ color: '#34d399', fontSize: 10, fontWeight: 600 }}>ONLINE</span>} />
-              </Flex>
-              <Flex align="center" gap={6}>
-                <MqttIndicatorDot />
-                <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 11, fontFamily: 'monospace' }}>
-                  broker.emqx.io:1883
-                </Text>
-              </Flex>
-            </MqttStatusCard>
+                  Đăng xuất
+                </Button>
+              </>
+            ) : (
+              <Flex vertical align="center" gap={10}>
+                <Tooltip title="MQTT Broker: ONLINE (broker.emqx.io:1883)" placement="right">
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
+                      background: 'rgba(0, 0, 0, 0.3)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <MqttIndicatorDot />
+                  </div>
+                </Tooltip>
 
-            {/* Logout button */}
-            <Button
-              block
-              icon={<LogOut size={14} />}
-              onClick={handleLogoutClick}
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderColor: 'rgba(255, 255, 255, 0.15)',
-                color: 'rgba(255, 255, 255, 0.85)',
-              }}
-            >
-              Đăng xuất
-            </Button>
+                <Tooltip title="Đăng xuất tài khoản" placement="right">
+                  <Button
+                    type="text"
+                    icon={<LogOut size={16} color="rgba(255, 255, 255, 0.85)" />}
+                    onClick={handleLogoutClick}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: 8,
+                    }}
+                  />
+                </Tooltip>
+              </Flex>
+            )}
           </SidebarFooter>
         </Flex>
       </Sider>
@@ -197,9 +283,37 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       <Layout style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Top Header Bar */}
         <HeaderBar>
-          <Title level={4} style={{ margin: 0, fontSize: 16, lineHeight: 'normal' }}>
-            {activeTitle}
-          </Title>
+          <Flex align="center" gap={14}>
+            {/* Nút đóng / mở Sidebar bên trái */}
+            <Tooltip title={collapsed ? 'Mở rộng menu bên trái' : 'Thu gọn menu bên trái'}>
+              <Button
+                type="text"
+                icon={
+                  collapsed ? (
+                    <PanelLeftOpen size={18} color="#09353D" />
+                  ) : (
+                    <PanelLeftClose size={18} color="#09353D" />
+                  )
+                }
+                onClick={() => setCollapsed(!collapsed)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 8,
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  cursor: 'pointer',
+                }}
+              />
+            </Tooltip>
+
+            <Title level={4} style={{ margin: 0, fontSize: 16, lineHeight: 'normal' }}>
+              {activeTitle}
+            </Title>
+          </Flex>
 
           <Flex align="center" gap={16}>
             <LiveClock />
@@ -250,5 +364,3 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     </Layout>
   );
 };
-
-export default AdminLayout;
