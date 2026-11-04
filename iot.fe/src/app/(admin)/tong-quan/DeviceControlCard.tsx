@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Card, Switch, Tag, Typography, Flex, Space, message } from 'antd';
+import { Card, Switch, Tag, Typography, Flex, Row, Col, message } from 'antd';
 import { Zap } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../../../stores/useAppStore';
@@ -10,16 +10,14 @@ import { signalRService } from '../../../lib/signalr/signalrService';
 import { DeviceActionEnum } from '../../../lib/constants/enums';
 import type { DeviceDto } from '../../../lib/api/devices';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export const DeviceControlCard: React.FC = () => {
   const queryClient = useQueryClient();
   const { ledStates, setHistoryRows } = useAppStore();
 
-  // 1. TanStack Query Hook từ src/lib/queries
   const { data: devices = [] } = useDevicesQuery();
 
-  // 2. TanStack Mutation Hook từ src/lib/mutations
   const controlMutation = useDeviceControlMutation({
     onSuccess: (res) => {
       if (res?.actionLog) {
@@ -31,7 +29,6 @@ export const DeviceControlCard: React.FC = () => {
     },
   });
 
-  // 3. SignalR: Lắng nghe trạng thái thiết bị phản hồi thời gian thực từ ESP8266
   useEffect(() => {
     signalRService.init();
 
@@ -52,91 +49,85 @@ export const DeviceControlCard: React.FC = () => {
     };
   }, [queryClient]);
 
-  const onlineCount = devices.length > 0 ? devices.length : 3;
-
   return (
-    <Card
-      styles={{
-        body: {
-          padding: 16,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-          height: '100%',
-          overflow: 'hidden',
-        },
-      }}
-      style={{
-        borderRadius: 12,
-        height: '100%',
-        borderColor: '#e2e8f0',
-      }}
-    >
-      <Flex justify="space-between" align="center" style={{ paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
-        <div>
-          <Title level={5} style={{ margin: 0, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Điều khiển ngoại vi
-          </Title>
-          
-        </div>
-        <Tag color="success" style={{ margin: 0, fontWeight: 600 }}>
-          {onlineCount} Online
-        </Tag>
-      </Flex>
+    <Row gutter={[12, 12]}>
+      {DEVICE_CONTROLS.map(({ key, id, name, label, color }) => {
+        const foundDev = devices.find((d) => d.id === id);
+        const active = foundDev !== undefined ? foundDev.isOn : Boolean(ledStates[key]);
+        const isPending =
+          controlMutation.isPending &&
+          controlMutation.variables?.deviceId === id;
 
-      <Space direction="vertical" size={10} style={{ width: '100%' }}>
-        {DEVICE_CONTROLS.map(({ key, id, name, label }) => {
-          const foundDev = devices.find((d) => d.id === id);
-          const active = foundDev !== undefined ? foundDev.isOn : Boolean(ledStates[key]);
-          const isPending =
-            controlMutation.isPending &&
-            controlMutation.variables?.deviceId === id;
+        const handleToggle = () => {
+          const nextAction = active ? DeviceActionEnum.OFF : DeviceActionEnum.ON;
+          controlMutation.mutate({
+            deviceId: id,
+            deviceKey: key,
+            deviceName: name,
+            action: nextAction,
+          });
+        };
 
-          const handleToggle = () => {
-            const nextAction = active ? DeviceActionEnum.OFF : DeviceActionEnum.ON;
-            controlMutation.mutate({
-              deviceId: id,
-              deviceKey: key,
-              deviceName: name,
-              action: nextAction,
-            });
-          };
-
-          return (
-            <div
-              key={key}
+        return (
+          <Col xs={24} md={8} key={key}>
+            <Card
+              styles={{
+                body: {
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                },
+              }}
               style={{
-                borderRadius: 8,
-                border: active ? '1px solid #fde68a' : '1px solid #e2e8f0',
-                backgroundColor: active ? '#fffbeb' : '#f8fafc',
-                padding: '10px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                transition: 'all 0.2s',
+                borderRadius: 12,
+                borderColor: active ? `${color || '#09353D'}55` : '#e2e8f0',
+                backgroundColor: active ? `${color || '#09353D'}08` : '#ffffff',
+                boxShadow: active
+                  ? `0 0 0 1px ${color || '#09353D'}33`
+                  : '0 1px 2px 0 rgba(0, 0, 0, 0.04)',
+                transition: 'all 0.2s ease',
               }}
             >
               <Flex align="center" gap={12}>
                 <div
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
+                    width: 38,
+                    height: 38,
+                    borderRadius: 10,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: active ? '#fef3c7' : '#ffffff',
-                    border: active ? '1px solid #fcd34d' : '1px solid #e2e8f0',
-                    color: active ? '#b45309' : '#94a3b8',
+                    backgroundColor: active ? `${color || '#09353D'}18` : '#f8fafc',
+                    border: active
+                      ? `1px solid ${color || '#09353D'}44`
+                      : '1px solid #e2e8f0',
+                    color: active ? color || '#09353D' : '#94a3b8',
+                    transition: 'all 0.2s ease',
                   }}
                 >
-                  <Zap size={16} fill={active ? 'rgba(245, 158, 11, 0.4)' : 'none'} />
+                  <Zap size={18} fill={active ? (color || '#09353D') : 'none'} />
                 </div>
                 <div>
-                  <Text strong style={{ fontSize: 12, display: 'block', lineHeight: 1.2 }}>
-                    {label}
-                  </Text>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
+                  <Flex align="center" gap={8}>
+                    <Text strong style={{ fontSize: 13, lineHeight: 1.2 }}>
+                      {label}
+                    </Text>
+                    <Tag
+                      bordered={false}
+                      color={active ? 'success' : 'default'}
+                      style={{
+                        fontSize: 10,
+                        padding: '0 6px',
+                        lineHeight: '18px',
+                        margin: 0,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {active ? 'BẬT' : 'TẮT'}
+                    </Tag>
+                  </Flex>
+                  <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>
                     {name}
                   </Text>
                 </div>
@@ -147,11 +138,11 @@ export const DeviceControlCard: React.FC = () => {
                 loading={isPending}
                 onChange={handleToggle}
               />
-            </div>
-          );
-        })}
-      </Space>
-    </Card>
+            </Card>
+          </Col>
+        );
+      })}
+    </Row>
   );
 };
 

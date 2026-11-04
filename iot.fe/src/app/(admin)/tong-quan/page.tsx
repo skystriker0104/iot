@@ -128,15 +128,15 @@ export const DashboardPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Main Row: Graph (Left 65%) + Device Controls (Right 35%) */}
-      <Row gutter={[12, 12]} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        <Col xs={24} lg={16} style={{ height: '100%' }}>
-          <SensorChartCard chartData={chartData} />
-        </Col>
-        <Col xs={24} lg={8} style={{ height: '100%' }}>
-          <DeviceControlCard />
-        </Col>
-      </Row>
+      {/* Middle Row: Full-width Sensor Chart Card */}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <SensorChartCard chartData={chartData} />
+      </div>
+
+      {/* Bottom Row: 3 Peripheral Device Control Cards */}
+      <div style={{ flexShrink: 0 }}>
+        <DeviceControlCard />
+      </div>
     </div>
   );
 };

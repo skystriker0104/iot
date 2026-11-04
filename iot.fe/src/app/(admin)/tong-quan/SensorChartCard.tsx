@@ -69,7 +69,7 @@ export const SensorChartCard: React.FC<SensorChartCardProps> = ({ chartData }) =
       </Flex>
 
       {/* Chart Display Area */}
-      <div style={{ flex: 1, width: '100%', minHeight: 280, paddingTop: 12 }}>
+      <div style={{ flex: 1, width: '100%', minHeight: 180, paddingTop: 12 }}>
         <ResponsiveContainer width="100%" height="100%">
           {activeParam === 'all' ? (
             <LineChart data={chartData} margin={{ top: 10, right: 15, left: -15, bottom: 0 }}>
