@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Card, Form, Input, Button, Checkbox, Alert, Typography, Flex, Space, Tag } from 'antd';
-import { Cpu, ShieldCheck, User, Lock, KeyRound } from 'lucide-react';
+import { Card, Form, Input, Button, Checkbox, Alert, Tag, Typography, Flex, Space } from 'antd';
+import { Cpu, ShieldCheck, User, Lock, Key } from 'lucide-react';
 import { useLoginMutation } from '../../lib/mutations';
 import { DEMO_ACCOUNTS, LOGIN_MESSAGES } from './const';
 import type { LoginPageProps } from './type';
@@ -9,7 +9,7 @@ const { Title, Text } = Typography;
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState('Admin@123');
   const [localError, setLocalError] = useState<string | null>(null);
 
   const loginMutation = useLoginMutation({
@@ -71,13 +71,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           >
             <Cpu size={24} color="#5eead4" />
           </div>
-
+          
           <Title level={3} style={{ color: '#ffffff', margin: 0, fontSize: 20 }}>
             Hệ thống Giám sát & Điều khiển IoT
           </Title>
-          <Text style={{ color: '#94a3b8', fontSize: 13 }}>
-            Học viện Công nghệ Bưu chính Viễn thông (PTIT)
-          </Text>
+        
         </div>
 
         {/* Login Card */}
@@ -95,12 +93,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 Đăng nhập hệ thống
               </Title>
               <Text type="secondary" style={{ fontSize: 12 }}>
-                Nhập tài khoản & mật khẩu để truy cập
+                Xác thực tài khoản và quyền truy cập
               </Text>
             </div>
-            <Tag color="#09353D" style={{ margin: 0, fontSize: 11 }}>
-              B23DCCN005
-            </Tag>
+            
           </Flex>
 
           {activeError && (
@@ -119,7 +115,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 prefix={<User size={16} color="#94a3b8" />}
-                placeholder="Nhập tên đăng nhập (vd: admin)"
+                placeholder="Nhập tên đăng nhập"
               />
             </Form.Item>
 
@@ -129,7 +125,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 prefix={<Lock size={16} color="#94a3b8" />}
-                placeholder="Nhập mật khẩu (vd: Admin@123)"
+                placeholder="Nhập mật khẩu"
               />
             </Form.Item>
 
@@ -137,9 +133,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               <Checkbox defaultChecked>
                 <span style={{ fontSize: 12, color: '#475569' }}>Ghi nhớ đăng nhập</span>
               </Checkbox>
-              <span style={{ fontSize: 12, color: '#64748b' }}>
-                Nhóm 11 - Thực hành IoT
-              </span>
+              <a href="#forgot" style={{ fontSize: 12, color: '#09353D' }}>
+                Quên mật khẩu?
+              </a>
             </Flex>
 
             <Button
@@ -155,55 +151,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             </Button>
           </Form>
 
-          {/* Demo account quick fill box */}
-          <div
-            style={{
-              marginTop: 20,
-              padding: 12,
-              borderRadius: 8,
-              backgroundColor: '#f8fafc',
-              border: '1px dashed #cbd5e1',
-            }}
-          >
-            <Flex justify="space-between" align="center" style={{ marginBottom: 8 }}>
-              <Text strong style={{ fontSize: 12, color: '#334155' }}>
-                <KeyRound size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-                Tài khoản mẫu thử nghiệm:
-              </Text>
-            </Flex>
-            <Space direction="vertical" style={{ width: '100%' }} size={6}>
-              {DEMO_ACCOUNTS.map((acc) => (
-                <Flex
-                  key={acc.username}
-                  justify="space-between"
-                  align="center"
-                  style={{
-                    backgroundColor: '#ffffff',
-                    padding: '6px 10px',
-                    borderRadius: 6,
-                    border: '1px solid #e2e8f0',
-                  }}
-                >
-                  <div>
-                    <Text strong style={{ fontSize: 12, color: '#09353D' }}>
-                      {acc.username}
-                    </Text>
-                    <Text type="secondary" style={{ fontSize: 11, marginLeft: 8 }}>
-                      MK: <code>{acc.pass}</code>
-                    </Text>
-                  </div>
-                  <Button
-                    size="small"
-                    type="link"
-                    style={{ padding: 0, fontSize: 11 }}
-                    onClick={() => handleFillDemo(acc.username, acc.pass)}
-                  >
-                    Điền nhanh
-                  </Button>
-                </Flex>
-              ))}
-            </Space>
-          </div>
+        
+
+          {/* Student Footer attribution */}
+          
         </Card>
       </div>
     </div>

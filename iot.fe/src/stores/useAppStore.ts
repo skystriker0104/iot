@@ -5,7 +5,6 @@ import { sendDeviceControlCommand } from '../lib/api/devices';
 import { fetchSensorHistoryApi, generateNewSensorTriad } from '../lib/api/sensors';
 import { fetchActionHistoryApi, appendMockHistory } from '../lib/api/history';
 import { INITIAL_CHART_DATA, INITIAL_SENSOR_RECORDS, INITIAL_ACTION_RECORDS } from '../lib/constants/mockData';
-import { signalRService } from '../lib/signalr/signalrService';
 
 interface AppState {
   chartData: SensorDataPoint[];
@@ -73,9 +72,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     const currentVal = state.ledStates[ledKey];
     const targetAction = currentVal ? DeviceActionEnum.OFF : DeviceActionEnum.ON;
 
+    // 1. Lock switch while executing command
     set({ loadingLed: ledKey });
 
     try {
+      // 2. Call mock control command
       const res = await sendDeviceControlCommand({
         deviceId,
         deviceKey: ledKey,
@@ -106,13 +107,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setCurrentPageSlug: (slug) => set({ currentPageSlug: slug }),
 
-  // Cập nhật dữ liệu cảm biến mới nhất và sinh số đo theo thời gian thực (Mock)
+  // Cập nhật dữ liệu cảm biến mới nhất và sinh số đo theo thời gian thực
   syncFromBackend: async () => {
     const state = get();
     if (!state.isLiveStreaming) return;
 
     const lastPoint = state.chartData[state.chartData.length - 1] || { temp: 27.5, light: 420, humidity: 65 };
     
+    // Tạo bước nhảy nhỏ tự nhiên
     const deltaTemp = (Math.random() - 0.48) * 0.4;
     const deltaLight = Math.round((Math.random() - 0.5) * 16);
     const deltaHumid = (Math.random() - 0.5) * 0.6;
@@ -124,15 +126,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
-    const newPoint = {
+    get().addLiveSensorPoint({
       time: timeStr,
       temp: nextTemp,
       light: nextLight,
       humidity: nextHumid
-    };
-
-    get().addLiveSensorPoint(newPoint);
-    signalRService.emitMockSensorData(newPoint);
+    });
 
     // Định kỳ sinh 3 bản ghi cảm biến mới vào bảng lịch sử cảm biến
     if (Math.random() > 0.4) {
@@ -140,19 +139,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       set((s) => ({
         sensorRecords: [...triad, ...s.sensorRecords].slice(0, 150)
       }));
-
-      // Bắn sự kiện tới TanStack Query hook để giao diện cập nhật ngay lập tức
-      signalRService.emitMockNewRecords(
-        triad.map((t, idx) => ({
-          id: Date.now() + idx,
-          sensorId: idx + 1,
-          sensorCode: t.sensorType,
-          sensorName: t.sensorType,
-          sensorUnit: t.unit,
-          value: t.value,
-          createdAt: new Date().toISOString()
-        }))
-      );
     }
   },
 

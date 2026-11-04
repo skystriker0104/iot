@@ -1,81 +1,35 @@
 import type { AuthUser, LoginCredentials } from '../types';
 import { AuthRoleEnum } from '../constants/enums';
 
-interface MockAccountConfig {
-  username: string;
-  passwords: string[];
-  fullName: string;
-  studentId: string;
-  role: AuthRoleEnum;
-  classGroup: string;
-  institution: string;
-}
+const DEFAULT_MOCK_USER: AuthUser = {
+  id: 1,
+  username: 'an.nguyen',
+  fullName: 'Nguyễn Văn An',
+  role: AuthRoleEnum.ADMIN,
+  studentId: 'B23DCCN005',
+  classGroup: 'Nhóm 11',
+  institution: 'Học viện Công nghệ Bưu chính Viễn thông (PTIT)',
+  token: 'mock-jwt-token-b23dccn005'
+};
 
-const VALID_ACCOUNTS: MockAccountConfig[] = [
-  {
-    username: 'admin',
-    passwords: ['Admin@123', 'admin', '123456'],
-    fullName: 'Nguyễn Văn An',
-    studentId: 'B23DCCN005',
-    role: AuthRoleEnum.ADMIN,
-    classGroup: 'Nhóm 11',
-    institution: 'Học viện Công nghệ Bưu chính Viễn thông (PTIT)',
-  },
-  {
-    username: 'b23dccn005',
-    passwords: ['Admin@123', 'admin', '123456'],
-    fullName: 'Nguyễn Văn An',
-    studentId: 'B23DCCN005',
-    role: AuthRoleEnum.STUDENT,
-    classGroup: 'Nhóm 11',
-    institution: 'Học viện Công nghệ Bưu chính Viễn thông (PTIT)',
-  },
-  {
-    username: 'an.nguyen',
-    passwords: ['Admin@123', 'admin', '123456'],
-    fullName: 'Nguyễn Văn An',
-    studentId: 'B23DCCN005',
-    role: AuthRoleEnum.ADMIN,
-    classGroup: 'Nhóm 11',
-    institution: 'Học viện Công nghệ Bưu chính Viễn thông (PTIT)',
-  },
-];
-
-/**
- * Giả lập đăng nhập tài khoản (Mock Authentication)
- * Chỉ cho phép đăng nhập khi nhập đúng tài khoản và mật khẩu
- */
 export async function loginApi(credentials: LoginCredentials): Promise<AuthUser> {
   const { username, password } = credentials;
 
-  // Giả lập độ trễ mạng nhẹ (200ms) để hiển thị trạng thái loading chân thực
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  // Giả lập độ trễ mạng nhẹ (150ms) cho trải nghiệm thực tế
+  await new Promise((resolve) => setTimeout(resolve, 150));
 
-  const trimmedUsername = (username || '').trim().toLowerCase();
-  const rawPassword = (password || '').trim();
-
-  if (!trimmedUsername || !rawPassword) {
-    throw new Error('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
+  if (!username.trim()) {
+    throw new Error('Vui lòng nhập tên tài khoản hoặc mã sinh viên.');
   }
 
-  // Kiểm tra tài khoản & mật khẩu hợp lệ
-  const matchedAccount = VALID_ACCOUNTS.find(
-    (acc) => acc.username.toLowerCase() === trimmedUsername
-  );
-
-  if (!matchedAccount || !matchedAccount.passwords.includes(rawPassword)) {
-    throw new Error('Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!');
-  }
-
+  // Chấp nhận mọi tài khoản demo / admin / B23DCCN005
+  const isStudent = username.trim().toUpperCase() === 'B23DCCN005' || username.trim().toLowerCase().includes('b23');
   const authUser: AuthUser = {
-    id: 1,
-    username: matchedAccount.username,
-    fullName: matchedAccount.fullName,
-    studentId: matchedAccount.studentId,
-    role: matchedAccount.role,
-    classGroup: matchedAccount.classGroup,
-    institution: matchedAccount.institution,
-    token: `mock-jwt-token-${matchedAccount.studentId.toLowerCase()}-${Date.now()}`,
+    ...DEFAULT_MOCK_USER,
+    username: username.trim(),
+    fullName: 'Nguyễn Văn An',
+    studentId: 'B23DCCN005',
+    role: isStudent ? AuthRoleEnum.STUDENT : AuthRoleEnum.ADMIN
   };
 
   localStorage.setItem('iot_auth_user', JSON.stringify(authUser));
@@ -86,23 +40,19 @@ export async function logoutApi(): Promise<void> {
   localStorage.removeItem('iot_auth_user');
 }
 
-/**
- * Lấy thông tin người dùng hiện tại từ localStorage
- * Trả về null nếu chưa đăng nhập (để bắt buộc hiển thị màn hình đăng nhập)
- */
 export function getCurrentUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem('iot_auth_user');
-    if (!raw) return null;
+    if (!raw) return DEFAULT_MOCK_USER; // Mặc định tự động đăng nhập tài khoản sinh viên Nguyễn Văn An
     const parsed = JSON.parse(raw);
-    if (!parsed || !parsed.token) return null;
-
+    // Luôn đảm bảo tên và MSV chuẩn theo yêu cầu
     return {
       ...parsed,
       fullName: 'Nguyễn Văn An',
-      studentId: 'B23DCCN005',
+      studentId: 'B23DCCN005'
     };
   } catch {
-    return null;
+    return DEFAULT_MOCK_USER;
   }
 }
+
