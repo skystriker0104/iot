@@ -1,5 +1,3 @@
-import { apiClient } from './client';
-
 export interface ProfileDto {
   id: number;
   username: string;
@@ -12,31 +10,19 @@ export interface ProfileDto {
   classGroup?: string;
 }
 
+/**
+ * Lấy thông tin hồ sơ sinh viên / quản trị viên (Chế độ Mock hoàn toàn)
+ */
 export async function fetchProfileApi(): Promise<ProfileDto> {
-  try {
-    const data = await apiClient<ProfileDto>('/api/profile');
-    if (data?.fullName) {
-      return {
-        ...data,
-        studentId: 'B23DCCN005',
-        classGroup: 'Nhóm 11',
-        institution: 'Học viện Công nghệ Bưu chính Viễn thông (PTIT)',
-      };
-    }
-  } catch (err) {
-    console.warn('Lỗi lấy /api/profile từ BE, dùng profile mặc định:', err);
-  }
-
   return {
     id: 1,
-    username: 'an.nguyen',
+    username: 'admin',
     fullName: 'Nguyễn Văn An',
     email: 'an.nguyen@ptit.edu.vn',
     role: 'Quản trị viên',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-09-01T08:00:00Z',
     studentId: 'B23DCCN005',
     classGroup: 'Nhóm 11',
     institution: 'Học viện Công nghệ Bưu chính Viễn thông (PTIT)',
   };
 }
-

@@ -1,7 +1,6 @@
 import type { SensorDataPoint, SensorRecord, SensorQueryParams, PagedResponse } from '../types';
 import { SensorTypeEnum, SensorStatusEnum } from '../constants/enums';
 import { INITIAL_CHART_DATA, INITIAL_SENSOR_RECORDS } from '../constants/mockData';
-import { apiClient } from './client';
 
 export interface SensorLatestDto {
   sensorId: number;
@@ -22,15 +21,14 @@ export interface SensorDataDto {
   createdAt: string;
 }
 
-export async function fetchLatestSensorsApi(): Promise<SensorLatestDto[]> {
-  try {
-    const data = await apiClient<SensorLatestDto[]>('/api/sensors/latest');
-    if (Array.isArray(data) && data.length > 0) return data;
-  } catch (err) {
-    console.warn('Lỗi lấy sensors/latest từ BE, dùng fallback:', err);
-  }
+let mockSensorsCache = [...INITIAL_SENSOR_RECORDS];
+let mockChartCache: SensorDataPoint[] = [...INITIAL_CHART_DATA];
 
-  const latestChart = INITIAL_CHART_DATA[INITIAL_CHART_DATA.length - 1] || { temp: 27.5, light: 420, humidity: 65 };
+/**
+ * Lấy dữ liệu cảm biến mới nhất cho 3 thẻ chỉ số (Chế độ Mock hoàn toàn)
+ */
+export async function fetchLatestSensorsApi(): Promise<SensorLatestDto[]> {
+  const latestChart = mockChartCache[mockChartCache.length - 1] || { temp: 27.5, light: 420, humidity: 65 };
   return [
     { sensorId: 1, code: 'temp', name: 'Nhiệt độ', unit: '°C', value: latestChart.temp, createdAt: new Date().toISOString() },
     { sensorId: 2, code: 'humidity', name: 'Độ ẩm', unit: '%', value: latestChart.humidity, createdAt: new Date().toISOString() },
@@ -38,62 +36,22 @@ export async function fetchLatestSensorsApi(): Promise<SensorLatestDto[]> {
   ];
 }
 
+/**
+ * Lấy danh sách điểm dữ liệu vẽ biểu đồ biến thiên (Chế độ Mock hoàn toàn)
+ */
 export async function fetchChartDataApi(): Promise<SensorDataPoint[]> {
-  try {
-    const data = await apiClient<any>('/api/sensors/chart-data');
-    if (data?.points && Array.isArray(data.points) && data.points.length > 0) {
-      return data.points.map((p: any) => ({
-        time: p.time,
-        temp: p.temp ?? 27.5,
-        light: p.light ?? 420,
-        humidity: p.humidity ?? 65
-      }));
-    }
-  } catch (err) {
-    console.warn('Lỗi lấy chart-data từ BE, dùng fallback:', err);
-  }
-  return [...INITIAL_CHART_DATA];
+  return [...mockChartCache];
 }
 
-let mockSensorsCache = [...INITIAL_SENSOR_RECORDS];
-
-// Route chuẩn DOCX Mục 3.4.2: GET /api/sensor-data
+/**
+ * Truy vấn phân trang, tìm kiếm & lọc dữ liệu lịch sử cảm biến (Chế độ Mock hoàn toàn)
+ */
 export async function fetchSensorHistoryApi(params: SensorQueryParams): Promise<PagedResponse<SensorRecord>> {
   const { page = 1, pageSize = 10, sensorType = 'all', sortOrder = 'desc', search = '' } = params;
 
-  try {
-    const queryParams = new URLSearchParams({
-      page: String(page),
-      pageSize: String(pageSize),
-    });
-    if (sensorType && sensorType !== 'all') queryParams.append('sensorType', sensorType);
-    if (search) queryParams.append('search', search);
-
-    const res = await apiClient<any>(`/api/sensor-data?${queryParams.toString()}`);
-    if (res?.items && Array.isArray(res.items)) {
-      const items: SensorRecord[] = res.items.map((r: any) => ({
-        id: `#S${r.id}`,
-        time: r.createdAt ? new Date(r.createdAt).toLocaleTimeString('vi-VN') : '',
-        sensorType: r.sensorName || r.sensorCode,
-        value: r.value,
-        unit: r.unit,
-        status: r.value > 30.5 ? SensorStatusEnum.WARNING : SensorStatusEnum.NORMAL,
-        deviceId: 'ESP8266_01'
-      }));
-      return {
-        items,
-        total: res.total || items.length,
-        page: res.page || page,
-        pageSize: res.pageSize || pageSize,
-        totalPages: res.totalPages || Math.ceil((res.total || items.length) / pageSize)
-      };
-    }
-  } catch (err) {
-    console.warn('Lỗi lấy /api/sensor-data từ BE, dùng mock fallback:', err);
-  }
-
   let filtered = [...mockSensorsCache];
-  if (sensorType !== 'all') {
+
+  if (sensorType && sensorType !== 'all') {
     filtered = filtered.filter((s) => s.sensorType === sensorType);
   }
 

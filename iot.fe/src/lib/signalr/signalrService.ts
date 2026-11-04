@@ -3,6 +3,9 @@ import { HubConnectionBuilder, HubConnection, HubConnectionState, LogLevel } fro
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5171';
 const HUB_URL = `${API_BASE}/hubs/iot`;
 
+// Cờ tạm thời chuyển toàn bộ sang mock mode (không gọi kết nối tới backend)
+export const IS_MOCK_MODE = true;
+
 export interface RealtimeSensorData {
   temp: number;
   humidity: number;
@@ -40,6 +43,11 @@ class SignalRService {
   private isStarting = false;
 
   public init() {
+    if (IS_MOCK_MODE) {
+      // Ở chế độ Mock tạm thời: không kết nối socket tới backend để tránh báo lỗi mạng
+      return;
+    }
+
     if (this.connection) return;
 
     this.connection = new HubConnectionBuilder()
@@ -85,7 +93,7 @@ class SignalRService {
   }
 
   private async startConnection() {
-    if (!this.connection || this.isStarting || this.connection.state === HubConnectionState.Connected) {
+    if (IS_MOCK_MODE || !this.connection || this.isStarting || this.connection.state === HubConnectionState.Connected) {
       return;
     }
 
@@ -93,11 +101,42 @@ class SignalRService {
     try {
       await this.connection.start();
       console.log('SignalR đã kết nối thành công tới /hubs/iot');
-    } catch (err) {
-      console.warn('SignalR chưa thể kết nối (Backend có thể chưa chạy), sẽ tự động thử lại khi có mạng.');
+    } catch {
+      // Yên lặng khi Backend chưa bật
     } finally {
       this.isStarting = false;
     }
+  }
+
+  // Phương thức phát sự kiện mock cục bộ cho chế độ không dùng API
+  public emitMockSensorData(data: RealtimeSensorData) {
+    this.sensorCallbacks.forEach((cb) => {
+      try {
+        cb(data);
+      } catch (err) {
+        console.error('Lỗi mock sensor callback:', err);
+      }
+    });
+  }
+
+  public emitMockNewRecords(records: BackendSensorRecordDto[]) {
+    this.recordCallbacks.forEach((cb) => {
+      try {
+        cb(records);
+      } catch (err) {
+        console.error('Lỗi mock record callback:', err);
+      }
+    });
+  }
+
+  public emitMockDeviceStatus(status: RealtimeDeviceStatus) {
+    this.deviceCallbacks.forEach((cb) => {
+      try {
+        cb(status);
+      } catch (err) {
+        console.error('Lỗi mock device callback:', err);
+      }
+    });
   }
 
   public onSensorData(cb: SensorDataCallback) {
@@ -122,6 +161,7 @@ class SignalRService {
   }
 
   public isConnected(): boolean {
+    if (IS_MOCK_MODE) return true;
     return this.connection?.state === HubConnectionState.Connected;
   }
 }

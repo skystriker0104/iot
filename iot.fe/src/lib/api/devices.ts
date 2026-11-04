@@ -1,6 +1,5 @@
 import type { DeviceControlPayload, ActionRecord } from '../types';
 import { DeviceActionEnum, DeviceStatusEnum } from '../constants/enums';
-import { apiClient } from './client';
 
 export interface DeviceDto {
   id: number;
@@ -10,35 +9,25 @@ export interface DeviceDto {
 }
 
 const mockDevices: DeviceDto[] = [
-  { id: 1, code: 'led_temp', name: 'LED 1 (LED_Temperature)', isOn: false },
+  { id: 1, code: 'led_temp', name: 'LED 1 (LED_Temperature)', isOn: true },
   { id: 2, code: 'led_lux', name: 'LED 2 (LED_Luminosity)', isOn: false },
-  { id: 3, code: 'led_humidity', name: 'LED 3 (LED_Humidity)', isOn: false }
+  { id: 3, code: 'led_humidity', name: 'LED 3 (LED_Humidity)', isOn: true }
 ];
 
+/**
+ * Lấy danh sách thiết bị ngoại vi (Chế độ Mock hoàn toàn, không gọi API)
+ */
 export async function fetchDevicesApi(): Promise<DeviceDto[]> {
-  try {
-    const data = await apiClient<DeviceDto[]>('/api/devices');
-    if (Array.isArray(data) && data.length > 0) return data;
-  } catch (err) {
-    console.warn('Sử dụng dữ liệu thiết bị fallback:', err);
-  }
   return [...mockDevices];
 }
 
+/**
+ * Điều khiển bật / tắt thiết bị ngoại vi (Chế độ Mock hoàn toàn, không gọi API)
+ */
 export async function sendDeviceControlCommand(
   payload: DeviceControlPayload
 ): Promise<{ success: boolean; actionLog: ActionRecord }> {
   const { deviceId, deviceName, action } = payload;
-
-  try {
-    // Gọi route chuẩn DOCX Mục 3.4.2: POST /api/devices/{deviceId}/commands
-    await apiClient(`/api/devices/${deviceId}/commands`, {
-      method: 'POST',
-      body: JSON.stringify({ action: action.toUpperCase() }),
-    });
-  } catch (err) {
-    console.warn('Lỗi gửi lệnh điều khiển tới BE, dùng fallback local:', err);
-  }
 
   const dev = mockDevices.find((d) => d.id === deviceId);
   if (dev) {
