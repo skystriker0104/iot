@@ -87,12 +87,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         label: 'Xem hồ sơ sinh viên',
         onClick: () => handleNavClick('profile'),
       },
-      {
-        key: 'mode',
-        icon: <ShieldCheck size={14} color="#10B981" />,
-        label: 'Chế độ: SignalR Realtime',
-      },
-      { type: 'divider' },
+    
       {
         key: 'logout',
         danger: true,
@@ -265,12 +260,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </Flex>
       </Sider>
 
-      {/* ─── MAIN CONTENT AREA ─────────────────────────────────────────────── */}
       <Layout style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Top Header Bar */}
         <HeaderBar>
           <Flex align="center" gap={14}>
-            {/* Nút đóng / mở Sidebar bên trái */}
             <Tooltip title={collapsed ? 'Mở rộng menu bên trái' : 'Thu gọn menu bên trái'}>
               <Button
                 type="text"

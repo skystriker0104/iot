@@ -14,7 +14,6 @@ export const ActivityLogPage: React.FC = () => {
   const [limit, setLimit] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // 1. TanStack Query Hook từ src/lib/queries
   const { data: pagedData, isLoading } = useActionHistoryQuery({
     page: currentPage,
     pageSize: limit,

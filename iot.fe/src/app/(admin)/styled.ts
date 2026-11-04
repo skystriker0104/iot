@@ -3,9 +3,7 @@ import { Layout } from 'antd';
 
 const { Header } = Layout;
 
-/**
- * Thanh Top Header Bar chuẩn 70px, triệt tiêu line-height mặc định 64px của Ant Design
- */
+
 export const HeaderBar = styled(Header)`
   background: #ffffff !important;
   height: 70px !important;
@@ -30,13 +28,11 @@ export const BrandHeader = styled.div`
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
-/**
- * Hộp vuông chứa Icon CPU đại diện cho hệ thống IoT (L107-L118)
- */
+
 export const BrandLogoBox = styled.div`
   width: 36px;
   height: 36px;
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
@@ -45,35 +41,26 @@ export const BrandLogoBox = styled.div`
   flex-shrink: 0;
 `;
 
-/**
- * Tiêu đề phân mục menu điều hướng
- */
+
 export const NavCategoryContainer = styled.div`
   padding: 12px 16px 4px;
 `;
 
-/**
- * Phần chân của Sidebar chứa trạng thái MQTT và nút Đăng xuất
- */
+
 export const SidebarFooter = styled.div`
   padding: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
-/**
- * Thẻ trạng thái kết nối MQTT broker trực tiếp
- */
 export const MqttStatusCard = styled.div`
   padding: 10px;
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 12px;
 `;
 
-/**
- * Chấm tròn báo hiệu trạng thái hoạt động online của MQTT
- */
+
 export const MqttIndicatorDot = styled.span`
   width: 8px;
   height: 8px;
@@ -89,7 +76,7 @@ export const MqttIndicatorDot = styled.span`
 export const UserProfileTrigger = styled.div`
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   gap: 10px;

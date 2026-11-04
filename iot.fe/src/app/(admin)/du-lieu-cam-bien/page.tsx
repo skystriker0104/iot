@@ -19,7 +19,6 @@ export const SensorDataPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isResetting, setIsResetting] = useState(false);
 
-  // 1. TanStack Query Hook kết hợp SignalR tự động cập nhật bản ghi mới tức thời
   const { data: pagedData, isLoading } = useSensorDataQuery({
     page: currentPage,
     pageSize: limit,
@@ -38,7 +37,6 @@ export const SensorDataPage: React.FC = () => {
     setCurrentPage(1);
     resetSensorRecords();
 
-    // Invalidate query cache để nạp lại dữ liệu mới nhất
     queryClient.invalidateQueries({ queryKey: queryKeys.sensors.all });
 
     setTimeout(() => {

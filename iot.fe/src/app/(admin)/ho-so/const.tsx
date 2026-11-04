@@ -1,7 +1,7 @@
 import { Github, Figma, Zap, FileText } from 'lucide-react';
 import type { ProfileResourceItem } from './type';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5171';
+const API_BASE = import.meta.env.VITE_API_URL ;
 
 export const PROFILE_RESOURCES: ProfileResourceItem[] = [
   {
