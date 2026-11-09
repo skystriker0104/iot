@@ -46,20 +46,24 @@ Middleware/     ExceptionHandler
 
 ## Nghiệp vụ cốt lõi (tóm tắt)
 
-- Sensor: 3 loại `temp`, `humidity`, `light`. Mỗi message `sensor_data` tách thành 3 dòng `DataSensor` cùng timestamp.
-- Device: 3 LED, Id **1 = green, 2 = red, 3 = yellow**, khớp `deviceId` firmware. `Device.Code` = `green` / `red` / `yellow`.
-- Điều khiển LED: Pending → publish → chờ `esp_status` → Success/Failed. Chi tiết ở skill.
-- Không có `CorrelationId`: ghép lệnh và phản hồi bằng `deviceId`.
+- Sensor: 3 loại `temp`, `humidity`, `light`. Mỗi message sensors tách thành 3 dòng `DataSensor` cùng timestamp. `light` là ADC thô 0..1023.
+- Device: 3 LED, Id **1 = led1 (D6), 2 = led2 (D7), 3 = led3 (D8)**. `Device.Code` = `led1` / `led2` / `led3` = segment trong topic firmware.
+- Điều khiển LED: Pending → publish `ON`/`OFF` → chờ `led{n}/status` có state khớp action → Success; quá timeout → Failed.
+- Không có `CorrelationId`: ghép lệnh và phản hồi bằng device code trong topic.
 
-## MQTT contract (không tự đổi)
+## MQTT contract (theo `firmware/esp8266/esp8266.ino`, không tự đổi)
+
+`BaseTopic` = `iot/esp8266_01` (cấu hình `Mqtt:BaseTopic`). Broker port 1883.
 
 | Hướng | Topic | Payload |
 | --- | --- | --- |
-| ESP → BE | `sensor_data` | `{"temp":28.5,"humidity":70.0,"light":45}` |
-| BE → ESP | `led_control` | chuỗi thuần: `green_on`, `red_off`, `yellow_on`, `all_on`, `all_off` |
-| ESP → BE | `esp_status` | `{"deviceId":1,"deviceName":"GREEN_LED","action":"ON","status":"success","state":"ON"}` |
+| ESP → BE | `iot/esp8266_01/sensors` (mỗi 3s) | `{"temperature":28.5,"humidity":70.0,"light":512}` |
+| BE → ESP | `iot/esp8266_01/led{1,2,3}/set` | chuỗi thuần `ON` / `OFF` |
+| BE → ESP | `iot/esp8266_01/leds/set` | `ON` / `OFF` cho cả 3 LED (BE chưa dùng) |
+| ESP → BE | `iot/esp8266_01/led{1,2,3}/status` (retained) | chuỗi thuần `ON` / `OFF` |
 
-- BE **không** subscribe `temp_data`, `humidity_data`, `light_data` (trùng với `sensor_data`).
+- BE subscribe `iot/esp8266_01/sensors` và `iot/esp8266_01/+/status`.
+- Firmware không gửi status khi lệnh sai → BE coi là timeout. Status retained/lúc ESP reconnect chỉ dùng để đồng bộ `Device.IsOn`.
 - ClientId của BE là `iot-server`. **Không dùng `ESP8266`** vì sẽ kick client của ESP.
 - Đổi topic hoặc payload nghĩa là đổi firmware ESP: phải hỏi user trước.
 

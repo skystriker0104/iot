@@ -90,10 +90,7 @@ export const SensorCard: React.FC<SensorCardProps> = ({
         <Divider style={{ margin: '12px 0 8px', borderColor: '#f1f5f9' }} />
         <Flex justify="space-between" align="center">
           <Flex align="center" gap={6}>
-            <Badge status="success" />
-            <Text type="secondary" style={{ fontSize: 11, fontWeight: 500 }}>
-              Trực tiếp
-            </Text>
+            
           </Flex>
           {subtext && (
             <Text type="secondary" style={{ fontSize: 11 }}>

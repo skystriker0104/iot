@@ -46,15 +46,13 @@ export function useLogoutMutation(options?: UseMutationOptions<void, Error, void
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      await logoutApi();
-    },
+    mutationFn: logoutApi,
     ...options,
-    onSuccess: (...args) => {
-      useAuthStore.getState().logout();
+    onSettled: (...args) => {
+      useAuthStore.setState({ authUser: null, isAuthenticated: false, error: null });
       // Xóa toàn bộ bộ nhớ đệm truy vấn
       queryClient.clear();
-      (options?.onSuccess as any)?.(...args);
+      (options?.onSettled as any)?.(...args);
     },
   });
 }

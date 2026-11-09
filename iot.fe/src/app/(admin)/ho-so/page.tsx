@@ -11,10 +11,9 @@ export const ProfilePage: React.FC = () => {
   // TanStack Query Hook lấy dữ liệu hồ sơ
   const { data: profile, isLoading } = useProfileQuery();
 
-  const fullName = profile?.fullName || 'Nguyễn Văn An';
-  const studentId = profile?.studentId || 'B23DCCN005';
-  const institution =
-    profile?.institution || 'Học viện Công nghệ Bưu chính Viễn thông (PTIT)';
+  const fullName = 'Nguyễn Văn An';
+  const studentId = 'B23DCCN005';
+  const institution = 'Học viện Công nghệ Bưu chính Viễn thông (PTIT)';
 
   return (
     <div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>

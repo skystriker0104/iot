@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<DataSensor> DataSensors => Set<DataSensor>();
     public DbSet<ActionHistory> ActionHistories => Set<ActionHistory>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -55,6 +56,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                 .OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => new { x.DeviceId, x.Status });
             e.HasIndex(x => x.CreatedAt);
+        });
+
+        b.Entity<RefreshToken>(e =>
+        {
+            e.Property(x => x.Token).HasMaxLength(64);
+            e.Property(x => x.ReplacedByToken).HasMaxLength(64);
+            e.HasIndex(x => x.Token).IsUnique();
+            e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

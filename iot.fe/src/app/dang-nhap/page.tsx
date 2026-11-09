@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Card, Form, Input, Button, Checkbox, Alert, Tag, Typography, Flex, Space } from 'antd';
 import { Cpu, ShieldCheck, User, Lock, Key } from 'lucide-react';
 import { useLoginMutation } from '../../lib/mutations';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { DEMO_ACCOUNTS, LOGIN_MESSAGES } from './const';
 import type { LoginPageProps } from './type';
 
@@ -37,7 +38,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setLocalError(null);
   }, []);
 
-  const activeError = localError || loginMutation.error?.message || null;
+  // sessionError: phiên cũ hết hạn (refresh token hết hạn / bị thu hồi)
+  const sessionError = useAuthStore((s) => s.error);
+  const activeError = localError || loginMutation.error?.message || sessionError || null;
   const isLoading = loginMutation.isPending;
 
   return (

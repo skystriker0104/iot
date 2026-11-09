@@ -2,7 +2,6 @@ import React, { useEffect, useMemo } from 'react';
 import { Row, Col } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
 import { Thermometer, Sun, Droplets } from 'lucide-react';
-import { useAppStore } from '../../../stores/useAppStore';
 import { SensorCard } from '../../../components/SensorCard';
 import { SensorChartCard } from './SensorChartCard';
 import { DeviceControlCard } from './DeviceControlCard';
@@ -10,64 +9,61 @@ import { useLatestSensorsQuery, useChartDataQuery, queryKeys } from '../../../li
 import { signalRService } from '../../../lib/signalr/signalrService';
 import type { SensorDataPoint } from '../../../lib/types';
 import type { SensorLatestDto } from '../../../lib/api/sensors';
+import { formatTime } from '../../../lib/utils/date';
+
+const round1 = (v: number) => Math.round(v * 10) / 10;
 
 export const DashboardPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const { chartData: storeChartData, addLiveSensorPoint } = useAppStore();
 
-  // 1. Sử dụng TanStack Query hooks từ src/lib/queries
-  const { data: chartData = storeChartData } = useChartDataQuery({
-    initialData: storeChartData,
-  });
-
+  const { data: chartData = [] } = useChartDataQuery();
   const { data: latestSensors = [] } = useLatestSensorsQuery();
 
-  // 2. SignalR: Lắng nghe sự kiện ReceiveSensorData trực tiếp thời gian thực từ ESP8266 qua Backend Hub
   useEffect(() => {
     signalRService.init();
 
     const unsubscribe = signalRService.onSensorData((realtime) => {
-      // Cập nhật giá trị cảm biến tức thời vào cache TanStack Query
-      queryClient.setQueryData<SensorLatestDto[]>(queryKeys.sensors.latest(), [
-        { sensorId: 1, code: 'temp', name: 'Nhiệt độ', unit: '°C', value: realtime.temp, createdAt: new Date().toISOString() },
-        { sensorId: 2, code: 'humidity', name: 'Độ ẩm', unit: '%', value: realtime.humidity, createdAt: new Date().toISOString() },
-        { sensorId: 3, code: 'light', name: 'Ánh sáng', unit: 'Lux', value: realtime.light, createdAt: new Date().toISOString() },
-      ]);
-
-      // Bổ sung điểm đo mới vào chuỗi thời gian biểu đồ (giữ 20 điểm gần nhất)
-      const timeStr = realtime.time || new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const newPoint: SensorDataPoint = {
-        time: timeStr,
+      const at = realtime.recordedAt || new Date().toISOString();
+      const values: Record<string, number> = {
         temp: realtime.temp,
-        light: realtime.light,
         humidity: realtime.humidity,
+        light: realtime.light,
+      };
+
+      // Cập nhật giá trị tức thời của 3 thẻ cảm biến (giữ tên/đơn vị từ BE)
+      queryClient.setQueryData<SensorLatestDto[]>(queryKeys.sensors.latest(), (old = []) =>
+        old.map((s) => (s.code in values ? { ...s, value: values[s.code], createdAt: at } : s))
+      );
+
+      // Thêm điểm mới vào biểu đồ (giữ 20 điểm gần nhất)
+      const newPoint: SensorDataPoint = {
+        time: formatTime(new Date(at)),
+        temp: round1(realtime.temp),
+        light: round1(realtime.light),
+        humidity: round1(realtime.humidity),
       };
 
       queryClient.setQueryData<SensorDataPoint[]>(queryKeys.sensors.chart(), (old = []) => {
         const next = [...old, newPoint];
         return next.length > 20 ? next.slice(next.length - 20) : next;
       });
-
-      // Đồng bộ vào Store toàn cục
-      addLiveSensorPoint(newPoint);
     });
 
-    return () => {
-      unsubscribe();
-    };
-  }, [queryClient, addLiveSensorPoint]);
+    return unsubscribe;
+  }, [queryClient]);
 
   // Trích xuất số liệu mới nhất hiển thị trên 3 Thẻ Cảm biến
   const tempSensor = latestSensors.find((s) => s.code === 'temp');
   const lightSensor = latestSensors.find((s) => s.code === 'light');
   const humidSensor = latestSensors.find((s) => s.code === 'humidity');
 
+  // null = chưa có dữ liệu (ESP chưa gửi lần nào) → hiển thị "--"
   const latestPoint = useMemo(() => {
-    const lastFromChart = chartData[chartData.length - 1] || { temp: 27.5, light: 420, humidity: 65 };
+    const lastFromChart = chartData[chartData.length - 1];
     return {
-      temp: tempSensor?.value ?? lastFromChart.temp,
-      light: lightSensor?.value ?? lastFromChart.light,
-      humidity: humidSensor?.value ?? lastFromChart.humidity,
+      temp: tempSensor?.value ?? lastFromChart?.temp ?? null,
+      light: lightSensor?.value ?? lastFromChart?.light ?? null,
+      humidity: humidSensor?.value ?? lastFromChart?.humidity ?? null,
     };
   }, [chartData, tempSensor, lightSensor, humidSensor]);
 
@@ -93,37 +89,34 @@ export const DashboardPage: React.FC = () => {
         <Col xs={24} md={8}>
           <SensorCard
             label="Cảm biến Nhiệt độ"
-            value={latestPoint.temp.toFixed(1)}
+            value={latestPoint.temp === null ? "--" : latestPoint.temp.toFixed(1)}
             unit="°C"
             color="#DC2626"
             Icon={Thermometer}
             trend={tempData}
-            subtext="Chuẩn: 18 - 32 °C"
-            thresholdWarning={latestPoint.temp > 30.5}
+            thresholdWarning={(latestPoint.temp ?? 0) > 30.5}
           />
         </Col>
         <Col xs={24} md={8}>
           <SensorCard
             label="Cảm biến Ánh sáng"
-            value={Math.round(latestPoint.light)}
+            value={latestPoint.light === null ? "--" : Math.round(latestPoint.light)}
             unit="Lux"
             color="#D97706"
             Icon={Sun}
             trend={lightData}
-            subtext="Chuẩn: 200 - 900 Lux"
-            thresholdWarning={latestPoint.light > 1000}
+            thresholdWarning={(latestPoint.light ?? 0) > 1000}
           />
         </Col>
         <Col xs={24} md={8}>
           <SensorCard
             label="Cảm biến Độ ẩm"
-            value={latestPoint.humidity.toFixed(1)}
+            value={latestPoint.humidity === null ? "--" : latestPoint.humidity.toFixed(1)}
             unit="%"
             color="#0284C7"
             Icon={Droplets}
             trend={humidData}
-            subtext="Chuẩn: 40 - 80 %"
-            thresholdWarning={latestPoint.humidity > 80}
+            thresholdWarning={(latestPoint.humidity ?? 0) > 80}
           />
         </Col>
       </Row>

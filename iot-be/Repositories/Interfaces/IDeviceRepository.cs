@@ -6,4 +6,5 @@ public interface IDeviceRepository : IRepository<Device>
 {
     Task<List<Device>> GetAllAsync(CancellationToken ct = default);
     Task<Device?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<Device?> GetByCodeAsync(string code, CancellationToken ct = default);
 }

@@ -9,6 +9,6 @@ public class ActionHistory
     public User? User { get; set; }
     public string Action { get; set; } = "";
     public ActionStatus Status { get; set; } = ActionStatus.Pending;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow.AddHours(7);
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? RespondedAt { get; set; }
 }

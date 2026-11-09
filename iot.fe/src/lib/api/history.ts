@@ -1,89 +1,72 @@
 import type { ActionRecord, ActionQueryParams, PagedResponse } from '../types';
-import { DeviceActionEnum, DeviceStatusEnum } from '../constants/enums';
-import { INITIAL_ACTION_RECORDS } from '../constants/mockData';
+import { DeviceStatusEnum } from '../constants/enums';
+import { formatAppDateTime } from '../utils/dateTime';
 import { apiClient } from './client';
 
-let mockHistoryCache: ActionRecord[] = [...INITIAL_ACTION_RECORDS];
-
-export function appendMockHistory(record: ActionRecord): void {
-  mockHistoryCache = [record, ...mockHistoryCache];
+interface ActionHistoryDto {
+  id: number;
+  deviceId: number;
+  deviceCode: string;
+  deviceName: string;
+  userId: number | null;
+  username: string | null;
+  action: string;
+  status: 'Pending' | 'Success' | 'Failed';
+  createdAt: string;
+  respondedAt: string | null;
 }
 
-// Route chuẩn DOCX Mục 3.4.2: GET /api/device-activity
+interface PagedResultDto<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+// Trạng thái FE ⇄ enum ActionStatus của BE
+const STATUS_TO_BE: Record<string, string> = {
+  [DeviceStatusEnum.SUCCESS]: 'Success',
+  [DeviceStatusEnum.LOADING]: 'Pending',
+  [DeviceStatusEnum.FAIL]: 'Failed',
+};
+
+const STATUS_FROM_BE: Record<string, DeviceStatusEnum> = {
+  Success: DeviceStatusEnum.SUCCESS,
+  Pending: DeviceStatusEnum.LOADING,
+  Failed: DeviceStatusEnum.FAIL,
+};
+
+function mapActionRecord(r: ActionHistoryDto): ActionRecord {
+  return {
+    id: `#H${r.id}`,
+    time: formatAppDateTime(new Date(r.createdAt)),
+    device: r.deviceName,
+    deviceId: r.deviceId,
+    action: r.action,
+    status: STATUS_FROM_BE[r.status] ?? r.status,
+    operator: r.username === 'admin' ? 'Nguyễn Văn An' : (r.username ?? 'Nguyễn Văn An'),
+    source: 'MQTT / Web',
+  };
+}
+
+// Báo cáo mục 3.4.2: GET /api/device-activity
 export async function fetchActionHistoryApi(params: ActionQueryParams): Promise<PagedResponse<ActionRecord>> {
   const { page = 1, pageSize = 10, device = 'all', action = 'all', status = 'all', search = '' } = params;
 
-  try {
-    const queryParams = new URLSearchParams({
-      page: String(page),
-      pageSize: String(pageSize),
-    });
-    if (device && device !== 'all') queryParams.append('device', device);
-    if (action && action !== 'all') queryParams.append('action', action);
-    if (status && status !== 'all') queryParams.append('status', status);
-    if (search) queryParams.append('search', search);
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (device !== 'all') query.append('deviceId', device);
+  if (action !== 'all') query.append('action', action);
+  if (status !== 'all' && STATUS_TO_BE[status]) query.append('status', STATUS_TO_BE[status]);
+  if (search.trim()) query.append('search', search.trim());
 
-    const res = await apiClient<any>(`/api/device-activity?${queryParams.toString()}`);
-    if (res?.items && Array.isArray(res.items)) {
-      const items: ActionRecord[] = res.items.map((r: any) => ({
-        id: `#H${r.id}`,
-        time: r.createdAt ? new Date(r.createdAt).toLocaleTimeString('vi-VN') : '',
-        device: r.deviceName || `Thiết bị #${r.deviceId}`,
-        deviceId: r.deviceId,
-        action: r.action === 'ON' ? DeviceActionEnum.ON : DeviceActionEnum.OFF,
-        status: r.status === 'Success' ? DeviceStatusEnum.SUCCESS :
-                r.status === 'Failed' ? DeviceStatusEnum.FAIL : DeviceStatusEnum.LOADING,
-        operator: r.userName || 'Hệ thống',
-        source: 'MQTT / Web'
-      }));
-
-      return {
-        items,
-        total: res.total || items.length,
-        page: res.page || page,
-        pageSize: res.pageSize || pageSize,
-        totalPages: res.totalPages || Math.ceil((res.total || items.length) / pageSize)
-      };
-    }
-  } catch (err) {
-    console.warn('Lỗi lấy /api/device-activity từ BE, dùng fallback:', err);
-  }
-
-  let filtered = [...mockHistoryCache];
-
-  if (device !== 'all') {
-    filtered = filtered.filter((r) => r.device.toLowerCase().includes(device.toLowerCase()));
-  }
-
-  if (action !== 'all') {
-    filtered = filtered.filter((r) => r.action === action);
-  }
-
-  if (status !== 'all') {
-    filtered = filtered.filter((r) => r.status === status);
-  }
-
-  if (search && search.trim()) {
-    const q = search.trim().toLowerCase();
-    filtered = filtered.filter((r) =>
-      r.id.toLowerCase().includes(q) ||
-      r.time.toLowerCase().includes(q) ||
-      r.device.toLowerCase().includes(q) ||
-      r.action.toLowerCase().includes(q) ||
-      r.status.toLowerCase().includes(q) ||
-      r.operator.toLowerCase().includes(q)
-    );
-  }
-
-  const total = filtered.length;
-  const totalPages = Math.ceil(total / pageSize) || 1;
-  const items = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const res = await apiClient<PagedResultDto<ActionHistoryDto>>(`/api/device-activity?${query}`);
 
   return {
-    items,
-    total,
-    page,
-    pageSize,
-    totalPages
+    items: res.items.map(mapActionRecord),
+    total: res.total,
+    page: res.page,
+    pageSize: res.pageSize,
+    totalPages: res.totalPages,
   };
 }

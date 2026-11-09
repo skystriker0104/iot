@@ -13,10 +13,18 @@ public static class DbSeeder
             {
                 Username = "admin",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
-                FullName = "Administrator",
+                FullName = "Nguyễn Văn An",
                 Email = "admin@iot.local",
                 Role = "Admin"
             });
+        }
+        else
+        {
+            var adminUser = await db.Users.FirstOrDefaultAsync(u => u.Username == "admin");
+            if (adminUser != null && adminUser.FullName != "Nguyễn Văn An")
+            {
+                adminUser.FullName = "Nguyễn Văn An";
+            }
         }
 
         if (!await db.Sensors.AnyAsync())
@@ -27,12 +35,27 @@ public static class DbSeeder
                 new Sensor { Code = "light", Name = "Ánh sáng", Unit = "%" });
         }
 
-        if (!await db.Devices.AnyAsync())
+        // Device.Code khớp segment topic firmware: iot/esp8266_01/{code}/set|status
+        var ledSeeds = new[]
         {
-            db.Devices.AddRange(
-                new Device { Id = 1, Code = "green", Name = "Green LED" },
-                new Device { Id = 2, Code = "red", Name = "Red LED" },
-                new Device { Id = 3, Code = "yellow", Name = "Yellow LED" });
+            new Device { Id = 1, Code = "led1", Name = "LED 1" },
+            new Device { Id = 2, Code = "led2", Name = "LED 2" },
+            new Device { Id = 3, Code = "led3", Name = "LED 3" }
+        };
+
+        var existing = await db.Devices.ToDictionaryAsync(d => d.Id);
+        foreach (var seed in ledSeeds)
+        {
+            if (!existing.TryGetValue(seed.Id, out var dev))
+            {
+                db.Devices.Add(seed);
+            }
+            else if (dev.Code != seed.Code)
+            {
+                // DB cũ dùng green/red/yellow → đổi sang led1/led2/led3
+                dev.Code = seed.Code;
+                dev.Name = seed.Name;
+            }
         }
 
         await db.SaveChangesAsync();

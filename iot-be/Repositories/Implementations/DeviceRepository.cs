@@ -12,4 +12,7 @@ public class DeviceRepository(AppDbContext db) : Repository<Device>(db), IDevice
 
     public Task<Device?> GetByIdAsync(int id, CancellationToken ct = default)
         => Set.FirstOrDefaultAsync(x => x.Id == id, ct);
+
+    public Task<Device?> GetByCodeAsync(string code, CancellationToken ct = default)
+        => Set.FirstOrDefaultAsync(x => x.Code == code, ct);
 }

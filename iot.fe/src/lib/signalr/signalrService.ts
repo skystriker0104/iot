@@ -1,13 +1,14 @@
 import { HubConnectionBuilder, HubConnection, HubConnectionState, LogLevel } from '@microsoft/signalr';
+import { API_BASE, getValidAccessToken } from '../api/client';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5171';
 const HUB_URL = `${API_BASE}/hubs/iot`;
+const RETRY_START_MS = 5000;
 
 export interface RealtimeSensorData {
   temp: number;
   humidity: number;
   light: number;
-  time: string;
+  recordedAt: string; // ISO UTC
 }
 
 export interface BackendSensorRecordDto {
@@ -32,72 +33,84 @@ type SensorDataCallback = (data: RealtimeSensorData) => void;
 type NewSensorRecordsCallback = (records: BackendSensorRecordDto[]) => void;
 type DeviceStatusCallback = (status: RealtimeDeviceStatus) => void;
 
+function emit<T>(callbacks: Set<(arg: T) => void>, arg: T, name: string) {
+  callbacks.forEach((cb) => {
+    try {
+      cb(arg);
+    } catch (err) {
+      console.error(`Lỗi callback ${name}:`, err);
+    }
+  });
+}
+
 class SignalRService {
   private connection: HubConnection | null = null;
-  private sensorCallbacks: Set<SensorDataCallback> = new Set();
-  private recordCallbacks: Set<NewSensorRecordsCallback> = new Set();
-  private deviceCallbacks: Set<DeviceStatusCallback> = new Set();
-  private isStarting = false;
+  private sensorCallbacks = new Set<SensorDataCallback>();
+  private recordCallbacks = new Set<NewSensorRecordsCallback>();
+  private deviceCallbacks = new Set<DeviceStatusCallback>();
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Gọi sau khi đã đăng nhập. Gọi nhiều lần không sao. */
   public init() {
     if (this.connection) return;
 
-    this.connection = new HubConnectionBuilder()
-      .withUrl(HUB_URL)
+    const connection = new HubConnectionBuilder()
+      .withUrl(HUB_URL, {
+        // Hub yêu cầu JWT; token sắp hết hạn sẽ được refresh trước khi (re)connect
+        accessTokenFactory: async () => (await getValidAccessToken()) ?? '',
+      })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .configureLogging(LogLevel.Warning)
       .build();
 
-    // 1. Lắng nghe gói tin số đo tức thời (Dashboard)
-    this.connection.on('ReceiveSensorData', (data: RealtimeSensorData) => {
-      this.sensorCallbacks.forEach((cb) => {
-        try {
-          cb(data);
-        } catch (err) {
-          console.error('Lỗi sensor callback:', err);
-        }
-      });
-    });
+    connection.on('ReceiveSensorData', (data: RealtimeSensorData) => emit(this.sensorCallbacks, data, 'ReceiveSensorData'));
+    connection.on('ReceiveNewSensorRecords', (records: BackendSensorRecordDto[]) =>
+      emit(this.recordCallbacks, records, 'ReceiveNewSensorRecords')
+    );
+    connection.on('ReceiveDeviceStatus', (status: RealtimeDeviceStatus) =>
+      emit(this.deviceCallbacks, status, 'ReceiveDeviceStatus')
+    );
 
-    // 2. Lắng nghe các bản ghi cảm biến mới vừa ghi vào Database (Sensor Data Page)
-    this.connection.on('ReceiveNewSensorRecords', (records: BackendSensorRecordDto[]) => {
-      this.recordCallbacks.forEach((cb) => {
-        try {
-          cb(records);
-        } catch (err) {
-          console.error('Lỗi new sensor records callback:', err);
-        }
-      });
-    });
+    // Hết lượt auto-reconnect thì thử kết nối lại từ đầu
+    connection.onclose(() => this.scheduleStart());
 
-    // 3. Lắng nghe phản hồi trạng thái thiết bị ngoại vi
-    this.connection.on('ReceiveDeviceStatus', (status: RealtimeDeviceStatus) => {
-      this.deviceCallbacks.forEach((cb) => {
-        try {
-          cb(status);
-        } catch (err) {
-          console.error('Lỗi device callback:', err);
-        }
-      });
-    });
-
-    this.startConnection();
+    this.connection = connection;
+    void this.start();
   }
 
-  private async startConnection() {
-    if (!this.connection || this.isStarting || this.connection.state === HubConnectionState.Connected) {
-      return;
-    }
+  public async stop() {
+    if (this.retryTimer) clearTimeout(this.retryTimer);
+    this.retryTimer = null;
 
-    this.isStarting = true;
-    try {
-      await this.connection.start();
-      console.log('SignalR đã kết nối thành công tới /hubs/iot');
-    } catch (err) {
-      console.warn('SignalR chưa thể kết nối (Backend có thể chưa chạy), sẽ tự động thử lại khi có mạng.');
-    } finally {
-      this.isStarting = false;
+    const connection = this.connection;
+    this.connection = null; // đặt null trước để onclose không tự kết nối lại
+    if (connection) {
+      try {
+        await connection.stop();
+      } catch {
+        /* ignore */
+      }
     }
+  }
+
+  private async start() {
+    const connection = this.connection;
+    if (!connection || connection.state !== HubConnectionState.Disconnected) return;
+
+    try {
+      await connection.start();
+    } catch {
+      console.warn('SignalR chưa kết nối được, thử lại sau 5 giây.');
+      this.scheduleStart();
+    }
+  }
+
+  private scheduleStart() {
+    if (!this.connection || this.retryTimer) return;
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      void this.start();
+    }, RETRY_START_MS);
   }
 
   public onSensorData(cb: SensorDataCallback) {

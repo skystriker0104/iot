@@ -8,7 +8,7 @@ const char* password = "01042005";
 
 // ===== MQTT =====
 const char* mqtt_server = "172.20.10.3";
-const int mqtt_port = 1883;
+const int mqtt_port = 1884;
 const char* mqtt_user = "";
 const char* mqtt_pass = "";
 

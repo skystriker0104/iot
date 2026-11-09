@@ -48,8 +48,8 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const logoutMutation = useLogoutMutation();
   const { currentPageSlug, setCurrentPageSlug } = useAppStore();
 
-  const fullName = profile?.fullName || 'Nguyễn Văn An';
-  const studentId = profile?.studentId || 'B23DCCN005';
+  const fullName = 'Nguyễn Văn An';
+  const studentId = 'B23DCCN005';
 
   const handleNavClick = useCallback(
     (key: string) => {

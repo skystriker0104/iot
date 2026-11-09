@@ -54,9 +54,7 @@ export const SensorChartCard: React.FC<SensorChartCardProps> = ({ chartData }) =
               Biểu đồ biến thiên dữ liệu cảm biến
             </Title>
           </Flex>
-          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
-            Nhiệt độ (°C) • Ánh sáng (Lux) • Độ ẩm (%)
-          </Text>
+      
         </div>
 
         {/* Ant Design Segmented Tabs */}

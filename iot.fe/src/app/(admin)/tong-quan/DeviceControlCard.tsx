@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { Card, Switch, Tag, Typography, Flex, Row, Col, message } from 'antd';
 import { Zap } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAppStore } from '../../../stores/useAppStore';
 import { DEVICE_CONTROLS } from './const';
 import { useDevicesQuery, queryKeys } from '../../../lib/queries';
 import { useDeviceControlMutation } from '../../../lib/mutations';
@@ -14,34 +13,23 @@ const { Text } = Typography;
 
 export const DeviceControlCard: React.FC = () => {
   const queryClient = useQueryClient();
-  const { ledStates, setHistoryRows } = useAppStore();
-
-  const { data: devices = [] } = useDevicesQuery();
+  const { data: devices = [], isError: devicesError } = useDevicesQuery();
 
   const controlMutation = useDeviceControlMutation({
-    onSuccess: (res) => {
-      if (res?.actionLog) {
-        setHistoryRows((prev) => [res.actionLog, ...prev]);
-      }
-    },
-    onError: () => {
-      message.error('Không thể gửi lệnh điều khiển thiết bị');
+    onError: (err) => {
+      // 409 thiết bị bận, 503 mất broker, 504 ESP không phản hồi...
+      message.error(err.message || 'Không thể gửi lệnh điều khiển thiết bị');
     },
   });
 
   useEffect(() => {
     signalRService.init();
 
+    // ESP báo trạng thái thật (sau lệnh, khi ESP kết nối lại, hoặc retained lúc BE khởi động)
     const unsub = signalRService.onDeviceStatus((status) => {
-      queryClient.setQueryData<DeviceDto[]>(queryKeys.devices.list(), (old = []) => {
-        return old.map((d) => {
-          if (d.id === status.deviceId || d.name.toLowerCase().includes(status.deviceName?.toLowerCase() || '')) {
-            const isTurnedOn = (status.state || status.action || '').toUpperCase() === 'ON';
-            return { ...d, isOn: isTurnedOn };
-          }
-          return d;
-        });
-      });
+      queryClient.setQueryData<DeviceDto[]>(queryKeys.devices.list(), (old = []) =>
+        old.map((d) => (d.id === status.deviceId ? { ...d, isOn: status.state.toUpperCase() === 'ON' } : d))
+      );
     });
 
     return () => {
@@ -53,7 +41,7 @@ export const DeviceControlCard: React.FC = () => {
     <Row gutter={[12, 12]}>
       {DEVICE_CONTROLS.map(({ key, id, name, label, color }) => {
         const foundDev = devices.find((d) => d.id === id);
-        const active = foundDev !== undefined ? foundDev.isOn : Boolean(ledStates[key]);
+        const active = foundDev?.isOn ?? false;
         const isPending =
           controlMutation.isPending &&
           controlMutation.variables?.deviceId === id;
@@ -136,6 +124,7 @@ export const DeviceControlCard: React.FC = () => {
               <Switch
                 checked={active}
                 loading={isPending}
+                disabled={!foundDev || devicesError}
                 onChange={handleToggle}
               />
             </Card>

@@ -5,15 +5,15 @@ import {
   fetchLatestSensorsApi,
   fetchChartDataApi,
   fetchSensorHistoryApi,
-  createSensorRecordsFromRealtime,
+  mapSensorRecord,
+  matchesSensorType,
   type SensorLatestDto,
 } from '../api/sensors';
-import { signalRService, type BackendSensorRecordDto } from '../signalr/signalrService';
-import { SensorStatusEnum } from '../constants/enums';
+import { signalRService } from '../signalr/signalrService';
 import type { SensorDataPoint, SensorRecord, SensorQueryParams, PagedResponse } from '../types';
 
 /**
- * Hook truy vấn giá trị tức thời mới nhất của 3 cảm biến
+ * Giá trị mới nhất của 3 cảm biến
  */
 export function useLatestSensorsQuery(options?: Partial<UseQueryOptions<SensorLatestDto[], Error>>) {
   return useQuery<SensorLatestDto[], Error>({
@@ -24,7 +24,7 @@ export function useLatestSensorsQuery(options?: Partial<UseQueryOptions<SensorLa
 }
 
 /**
- * Hook truy vấn chuỗi dữ liệu vẽ biểu đồ biến thiên 20 điểm gần nhất
+ * 20 lần đo gần nhất cho biểu đồ Dashboard
  */
 export function useChartDataQuery(options?: Partial<UseQueryOptions<SensorDataPoint[], Error>>) {
   return useQuery<SensorDataPoint[], Error>({
@@ -39,121 +39,55 @@ export interface UseSensorDataQueryOptions extends Partial<UseQueryOptions<Paged
 }
 
 /**
- * Hook truy vấn phân trang, tìm kiếm & lọc dữ liệu lịch sử cảm biến tích hợp SignalR thời gian thực từ Backend
+ * Phân trang / tìm kiếm / lọc dữ liệu cảm biến, tự chèn bản ghi mới qua SignalR
  */
-export function useSensorDataQuery(
-  params: SensorQueryParams,
-  options?: UseSensorDataQueryOptions
-) {
+export function useSensorDataQuery(params: SensorQueryParams, options?: UseSensorDataQueryOptions) {
   const queryClient = useQueryClient();
-  const enableRealtime = options?.enableRealtime ?? true;
+  const { enableRealtime = true, ...queryOptions } = options ?? {};
 
   const query = useQuery<PagedResponse<SensorRecord>, Error>({
     queryKey: queryKeys.sensors.history(params),
     queryFn: () => fetchSensorHistoryApi(params),
     placeholderData: (previousData) => previousData,
-    ...options,
+    ...queryOptions,
   });
 
-  // Tích hợp SignalR: Lắng nghe sự kiện ReceiveNewSensorRecords (từ DB) & ReceiveSensorData (tức thời)
   useEffect(() => {
     if (!enableRealtime) return;
 
     signalRService.init();
 
-    // 1. Khi Backend lưu bản ghi cảm biến mới vào Database, broadcast ReceiveNewSensorRecords với ID thật
-    const unsubDbRecords = signalRService.onNewSensorRecords((dbRecords: BackendSensorRecordDto[]) => {
+    // BE vừa ghi bản ghi mới vào DB (có Id thật) → chèn lên đầu trang 1 khi đang sort mới nhất trước
+    const unsubscribe = signalRService.onNewSensorRecords((dbRecords) => {
       if (!Array.isArray(dbRecords) || dbRecords.length === 0) return;
 
-      const formattedRecords: SensorRecord[] = dbRecords.map((r) => ({
-        id: `#S${r.id}`,
-        time: r.createdAt ? new Date(r.createdAt).toLocaleTimeString('vi-VN') : '',
-        sensorType: r.sensorName || r.sensorCode,
-        value: r.value,
-        unit: r.sensorUnit,
-        status: r.value > 30.5 ? SensorStatusEnum.WARNING : SensorStatusEnum.NORMAL,
-        deviceId: 'ESP8266_01',
-      }));
-
       const isFirstPage = !params.page || params.page === 1;
       const isDescOrder = !params.sortOrder || params.sortOrder === 'desc';
+      const hasSearch = !!params.search?.trim();
 
-      if (isFirstPage && isDescOrder) {
-        queryClient.setQueryData<PagedResponse<SensorRecord>>(
-          queryKeys.sensors.history(params),
-          (old) => {
-            if (!old) return old;
+      if (isFirstPage && isDescOrder && !hasSearch) {
+        const incoming = dbRecords.map(mapSensorRecord).filter((r) => matchesSensorType(r, params.sensorType));
 
-            const filtered =
-              params.sensorType && params.sensorType !== 'all'
-                ? formattedRecords.filter((r) => r.sensorType === params.sensorType)
-                : formattedRecords;
+        queryClient.setQueryData<PagedResponse<SensorRecord>>(queryKeys.sensors.history(params), (old) => {
+          if (!old || incoming.length === 0) return old;
 
-            if (filtered.length === 0) return old;
+          const existingIds = new Set(old.items.map((i) => i.id));
+          const fresh = incoming.filter((i) => !existingIds.has(i.id));
+          if (fresh.length === 0) return old;
 
-            // Loại bỏ các bản ghi trùng ID nếu đã có
-            const existingIds = new Set(old.items.map((i) => i.id));
-            const newUnique = filtered.filter((i) => !existingIds.has(i.id));
-            if (newUnique.length === 0) return old;
-
-            const nextItems = [...newUnique, ...old.items].slice(0, params.pageSize || 10);
-            return {
-              ...old,
-              items: nextItems,
-              total: old.total + newUnique.length,
-            };
-          }
-        );
+          return {
+            ...old,
+            items: [...fresh, ...old.items].slice(0, params.pageSize || 10),
+            total: old.total + fresh.length,
+          };
+        });
       }
 
-      // Đánh dấu stale để tự động refetch khi chuyển trang
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.sensors.all,
-        exact: false,
-        refetchType: 'none',
-      });
+      // Các trang/bộ lọc khác: đánh dấu cũ để lần mở sau tự tải lại
+      queryClient.invalidateQueries({ queryKey: queryKeys.sensors.all, refetchType: 'none' });
     });
 
-    // 2. Lắng nghe ReceiveSensorData phát tức thời khi nhận MQTT packet
-    const unsubRealtime = signalRService.onSensorData((realtime) => {
-      const newTriad = createSensorRecordsFromRealtime(realtime);
-      const isFirstPage = !params.page || params.page === 1;
-      const isDescOrder = !params.sortOrder || params.sortOrder === 'desc';
-
-      if (isFirstPage && isDescOrder) {
-        queryClient.setQueryData<PagedResponse<SensorRecord>>(
-          queryKeys.sensors.history(params),
-          (old) => {
-            if (!old) return old;
-
-            const filteredTriad =
-              params.sensorType && params.sensorType !== 'all'
-                ? newTriad.filter((r) => r.sensorType === params.sensorType)
-                : newTriad;
-
-            if (filteredTriad.length === 0) return old;
-
-            const nextItems = [...filteredTriad, ...old.items].slice(0, params.pageSize || 10);
-            return {
-              ...old,
-              items: nextItems,
-              total: old.total + filteredTriad.length,
-            };
-          }
-        );
-      }
-
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.sensors.all,
-        exact: false,
-        refetchType: 'none',
-      });
-    });
-
-    return () => {
-      unsubDbRecords();
-      unsubRealtime();
-    };
+    return unsubscribe;
   }, [queryClient, params, enableRealtime]);
 
   return query;

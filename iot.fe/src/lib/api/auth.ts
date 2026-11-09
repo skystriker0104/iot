@@ -1,58 +1,54 @@
 import type { AuthUser, LoginCredentials } from '../types';
-import { AuthRoleEnum } from '../constants/enums';
+import { apiClient, API_BASE } from './client';
+import { tokenStorage, type TokenResponse } from './tokenStorage';
+import { fetchProfileApi } from './profile';
+import { signalRService } from '../signalr/signalrService';
 
-const DEFAULT_MOCK_USER: AuthUser = {
-  id: 1,
-  username: 'an.nguyen',
-  fullName: 'Nguyễn Văn An',
-  role: AuthRoleEnum.ADMIN,
-  studentId: 'B23DCCN005',
-  classGroup: 'Nhóm 11',
-  institution: 'Học viện Công nghệ Bưu chính Viễn thông (PTIT)',
-  token: 'mock-jwt-token-b23dccn005'
-};
+// POST /api/auth/login → lưu access + refresh token → lấy hồ sơ người dùng
+export async function loginApi({ username, password }: LoginCredentials): Promise<AuthUser> {
+  const tokens = await apiClient<TokenResponse>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username: username.trim(), password }),
+    skipAuth: true,
+  });
+  tokenStorage.setTokens(tokens);
 
-export async function loginApi(credentials: LoginCredentials): Promise<AuthUser> {
-  const { username, password } = credentials;
-
-  // Giả lập độ trễ mạng nhẹ (150ms) cho trải nghiệm thực tế
-  await new Promise((resolve) => setTimeout(resolve, 150));
-
-  if (!username.trim()) {
-    throw new Error('Vui lòng nhập tên tài khoản hoặc mã sinh viên.');
-  }
-
-  // Chấp nhận mọi tài khoản demo / admin / B23DCCN005
-  const isStudent = username.trim().toUpperCase() === 'B23DCCN005' || username.trim().toLowerCase().includes('b23');
-  const authUser: AuthUser = {
-    ...DEFAULT_MOCK_USER,
-    username: username.trim(),
-    fullName: 'Nguyễn Văn An',
-    studentId: 'B23DCCN005',
-    role: isStudent ? AuthRoleEnum.STUDENT : AuthRoleEnum.ADMIN
-  };
-
-  localStorage.setItem('iot_auth_user', JSON.stringify(authUser));
-  return authUser;
-}
-
-export async function logoutApi(): Promise<void> {
-  localStorage.removeItem('iot_auth_user');
-}
-
-export function getCurrentUser(): AuthUser | null {
   try {
-    const raw = localStorage.getItem('iot_auth_user');
-    if (!raw) return DEFAULT_MOCK_USER; // Mặc định tự động đăng nhập tài khoản sinh viên Nguyễn Văn An
-    const parsed = JSON.parse(raw);
-    // Luôn đảm bảo tên và MSV chuẩn theo yêu cầu
-    return {
-      ...parsed,
-      fullName: 'Nguyễn Văn An',
-      studentId: 'B23DCCN005'
+    const profile = await fetchProfileApi();
+    const user: AuthUser = {
+      id: profile.id,
+      username: profile.username,
+      fullName: profile.fullName,
+      email: profile.email,
+      role: profile.role,
     };
-  } catch {
-    return DEFAULT_MOCK_USER;
+    tokenStorage.setUser(user);
+    return user;
+  } catch (err) {
+    tokenStorage.clear();
+    throw err;
   }
 }
 
+// Thu hồi refresh token ở BE (không chặn đăng xuất nếu BE lỗi)
+export async function logoutApi(): Promise<void> {
+  const refreshToken = tokenStorage.getRefreshToken();
+  tokenStorage.clear();
+  await signalRService.stop();
+
+  if (!refreshToken) return;
+  try {
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    /* BE không chạy: token sẽ tự hết hạn */
+  }
+}
+
+// Phiên còn lưu trong localStorage (access token hết hạn sẽ được refresh ở request đầu tiên)
+export function getCurrentUser(): AuthUser | null {
+  return tokenStorage.getRefreshToken() ? tokenStorage.getUser() : null;
+}

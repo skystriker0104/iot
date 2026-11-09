@@ -2,9 +2,10 @@ import { DeviceActionEnum, DeviceStatusEnum } from '../../../lib/constants/enums
 
 export const DEVICE_FILTER_OPTIONS = [
   { value: 'all', label: 'Device: All' },
-  { value: 'LED 1', label: 'Device: LED 1' },
-  { value: 'LED 2', label: 'Device: LED 2' },
-  { value: 'LED 3', label: 'Device: LED 3' },
+  // value = deviceId của BE (1 = led1, 2 = led2, 3 = led3)
+  { value: '1', label: 'Device: LED 1' },
+  { value: '2', label: 'Device: LED 2' },
+  { value: '3', label: 'Device: LED 3' },
 ];
 
 export const ACTION_FILTER_OPTIONS = [

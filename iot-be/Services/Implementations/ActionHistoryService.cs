@@ -15,8 +15,10 @@ public class ActionHistoryService(IActionHistoryRepository histories, ActionHist
         var (items, total) = await histories.GetPagedAsync(
             query.DeviceId,
             query.Status,
+            query.Action?.ToUpperInvariant(),
             query.From?.UtcDateTime,
             query.To?.UtcDateTime,
+            SearchKeyword.Parse(query.Search),
             query.Page,
             query.PageSize,
             ct);

@@ -94,8 +94,10 @@ public class SensorService(
     {
         var (items, total) = await sensorData.GetPagedAsync(
             query.SensorId,
+            query.SensorCode,
             query.From?.UtcDateTime,
             query.To?.UtcDateTime,
+            SearchKeyword.Parse(query.Search),
             query.SortDesc,
             query.Page,
             query.PageSize,

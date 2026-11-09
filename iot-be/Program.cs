@@ -1,3 +1,9 @@
+
+
+
+
+
+
 using System.Text;
 using IotServer.Data;
 using IotServer.Dtos.Common;
@@ -32,6 +38,7 @@ builder.Services.AddScoped<ISensorRepository, SensorRepository>();
 builder.Services.AddScoped<IDeviceRepository, DeviceRepository>();
 builder.Services.AddScoped<ISensorDataRepository, SensorDataRepository>();
 builder.Services.AddScoped<IActionHistoryRepository, ActionHistoryRepository>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
 // ---- SignalR ----
 builder.Services.AddSignalR();
@@ -84,6 +91,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ClockSkew = TimeSpan.Zero,
             NameClaimType = "name",
             RoleClaimType = "role"
+        };
+
+        // SignalR (WebSocket) không gửi được header Authorization → đọc token từ query string
+        o.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var token = ctx.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(token) && ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                    ctx.Token = token;
+                return Task.CompletedTask;
+            }
         };
     });
 builder.Services.AddAuthorization();

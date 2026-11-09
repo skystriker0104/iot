@@ -21,6 +21,11 @@ public class ActionHistoryQuery
 {
     public int? DeviceId { get; set; }
     public ActionStatus? Status { get; set; }
+
+    [RegularExpression("(?i)^(on|off)$", ErrorMessage = "Action chỉ nhận ON hoặc OFF")]
+    public string? Action { get; set; }
+
+    [MaxLength(100)] public string? Search { get; set; }
     public DateTimeOffset? From { get; set; }
     public DateTimeOffset? To { get; set; }
     [Range(1, int.MaxValue)] public int Page { get; set; } = 1;

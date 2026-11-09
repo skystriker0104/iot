@@ -26,7 +26,7 @@ public class MqttMessageHandler(
         try
         {
             if (topic == _opt.SensorTopic) await HandleSensorAsync(payload);
-            else if (topic == _opt.StatusTopic) await HandleStatusAsync(payload);
+            else if (_opt.ParseStatusDeviceCode(topic) is { } deviceCode) await HandleStatusAsync(deviceCode, payload);
         }
         catch (JsonException ex)
         {
@@ -43,12 +43,12 @@ public class MqttMessageHandler(
         var data = JsonSerializer.Deserialize<SensorPayload>(payload, Json);
         if (data is null) return;
 
-        var now = DateTime.UtcNow.AddHours(7);
+        var now = DateTime.UtcNow;
         var values = new Dictionary<string, double>();
 
         if (data.Temp is { } t && InRange(t, -20, 80)) values["temp"] = t;
         if (data.Humidity is { } h && InRange(h, 0, 100)) values["humidity"] = h;
-        if (data.Light is { } l && InRange(l, 0, 100)) values["light"] = l;
+        if (data.Light is { } l && InRange(l, 0, 1023)) values["light"] = l; // ADC thô của LDR
 
         if (values.Count == 0)
         {
@@ -67,7 +67,7 @@ public class MqttMessageHandler(
                 temp = values.GetValueOrDefault("temp"),
                 humidity = values.GetValueOrDefault("humidity"),
                 light = values.GetValueOrDefault("light"),
-                time = now.ToString("HH:mm:ss")
+                recordedAt = DateTime.SpecifyKind(now, DateTimeKind.Utc) // ISO UTC, FE tự đổi sang giờ địa phương
             });
         }
         catch (Exception ex)
@@ -120,16 +120,52 @@ public class MqttMessageHandler(
         }
     }
 
-    private async Task HandleStatusAsync(string payload)
+    // Firmware publish (retained) "ON"/"OFF" lên {BaseTopic}/led{n}/status khi:
+    // vừa kết nối MQTT, sau lệnh bật/tắt từng LED, và sau lệnh leds/set.
+    // Firmware không gửi status khi lệnh sai → BE timeout → Failed.
+    private async Task HandleStatusAsync(string deviceCode, string payload)
     {
-        var msg = JsonSerializer.Deserialize<EspStatusPayload>(payload, Json);
-        if (msg is null) return;
-
-        if (msg.DeviceId == 0)
+        var state = payload.Trim().ToUpperInvariant();
+        if (state is not ("ON" or "OFF"))
         {
-            logger.LogWarning("ESP báo lệnh lạ: {Action}", msg.Action);
+            logger.LogWarning("Trạng thái không hợp lệ từ {Code}: {Payload}", deviceCode, payload);
             return;
         }
+
+        using var scope = scopeFactory.CreateScope();
+        var historyRepo = scope.ServiceProvider.GetRequiredService<IActionHistoryRepository>();
+        var deviceRepo = scope.ServiceProvider.GetRequiredService<IDeviceRepository>();
+        var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        var device = await deviceRepo.GetByCodeAsync(deviceCode);
+        if (device is null)
+        {
+            logger.LogWarning("Nhận status cho thiết bị không tồn tại: {Code}", deviceCode);
+            return;
+        }
+
+        // Luôn đồng bộ trạng thái thật của LED (kể cả message retained khi BE vừa kết nối)
+        device.IsOn = state == "ON";
+
+        // Chỉ chốt lệnh Pending khi trạng thái khớp action đã gửi
+        var history = await historyRepo.GetLatestPendingAsync(device.Id);
+        var matched = history is not null && history.Action.Equals(state, StringComparison.OrdinalIgnoreCase);
+        if (matched)
+        {
+            history!.Status = ActionStatus.Success;
+            history.RespondedAt = DateTime.UtcNow;
+        }
+
+        await uow.SaveChangesAsync();
+
+        var msg = new EspStatusPayload
+        {
+            DeviceId = device.Id,
+            DeviceName = device.Name,
+            Action = state,
+            Status = "success",
+            State = state
+        };
 
         // Bắn SignalR broadcast trạng thái thiết bị thời gian thực
         try
@@ -148,35 +184,8 @@ public class MqttMessageHandler(
             logger.LogWarning(ex, "Không thể gửi SignalR ReceiveDeviceStatus");
         }
 
-        using var scope = scopeFactory.CreateScope();
-        var historyRepo = scope.ServiceProvider.GetRequiredService<IActionHistoryRepository>();
-        var deviceRepo = scope.ServiceProvider.GetRequiredService<IDeviceRepository>();
-        var uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-
-        var history = await historyRepo.GetLatestPendingAsync(msg.DeviceId);
-        if (history is null)
-        {
-            logger.LogWarning("Nhận esp_status cho device {Id} nhưng không có bản ghi Pending", msg.DeviceId);
-        }
-        else
-        {
-            history.Status = msg.Status.Equals("success", StringComparison.OrdinalIgnoreCase)
-                ? ActionStatus.Success
-                : ActionStatus.Failed;
-            history.RespondedAt = DateTime.UtcNow.AddHours(7);
-        }
-
-        if (msg.Status.Equals("success", StringComparison.OrdinalIgnoreCase))
-        {
-            var device = await deviceRepo.GetByIdAsync(msg.DeviceId);
-            if (device is not null)
-            {
-                device.IsOn = msg.State.Equals("on", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        await uow.SaveChangesAsync();
-        registry.TryComplete(msg.DeviceId, msg);
+        if (matched)
+            registry.TryComplete(device.Id, msg);
     }
 
     private static bool InRange(double v, double min, double max) => v >= min && v <= max;

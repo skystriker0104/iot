@@ -1,5 +1,4 @@
 export * from './enums';
-export * from './mockData';
 
 export const APP_CONFIG = {
   APP_TITLE: 'IoT Hub PTIT',

@@ -77,7 +77,7 @@ public class MqttService : BackgroundService, IMqttPublisher
     {
         var sub = new MqttClientSubscribeOptionsBuilder()
             .WithTopicFilter(_opt.SensorTopic)
-            .WithTopicFilter(_opt.StatusTopic)
+            .WithTopicFilter(_opt.StatusTopicFilter)
             .Build();
 
         return _client.SubscribeAsync(sub, ct);

@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Card, Pagination, Typography, Space, Flex, Tag, Badge } from 'antd';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAppStore } from '../../../stores/useAppStore';
 import { SensorFilterBar } from './SensorFilterBar';
 import { SensorDataTable } from './SensorDataTable';
 import { useSensorDataQuery, queryKeys } from '../../../lib/queries';
@@ -11,7 +10,6 @@ const { Title, Text } = Typography;
 
 export const SensorDataPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const { resetSensorRecords } = useAppStore();
 
   const [search, setSearch] = useState('');
   const [sensorTypeFilter, setSensorTypeFilter] = useState('all');
@@ -21,6 +19,7 @@ export const SensorDataPage: React.FC = () => {
   const [isResetting, setIsResetting] = useState(false);
 
   const debouncedSearch = useDebounce(search, 500);
+
 
   const { data: pagedData, isLoading } = useSensorDataQuery({
     page: currentPage,
@@ -38,14 +37,13 @@ export const SensorDataPage: React.FC = () => {
     setSearch('');
     setSensorTypeFilter('all');
     setCurrentPage(1);
-    resetSensorRecords();
 
     queryClient.invalidateQueries({ queryKey: queryKeys.sensors.all });
 
     setTimeout(() => {
       setIsResetting(false);
     }, 400);
-  }, [resetSensorRecords, queryClient]);
+  }, [queryClient]);
 
   const handleSearch = useCallback(({ keyword, sensorType }: { keyword: string; sensorType: string }) => {
     setSearch(keyword);

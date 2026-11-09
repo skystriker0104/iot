@@ -54,7 +54,8 @@ public class DeviceService(
 
             try
             {
-                await mqtt.PublishAsync(_opt.ControlTopic, $"{device.Code}_{action.ToLowerInvariant()}", ct);
+                // Firmware: iot/esp8266_01/led{n}/set, payload "ON" | "OFF"
+                await mqtt.PublishAsync(_opt.ControlTopic(device.Code), action, ct);
             }
             catch (Exception) when (!ct.IsCancellationRequested)
             {
@@ -95,7 +96,7 @@ public class DeviceService(
     private async Task FailAsync(ActionHistory history)
     {
         history.Status = ActionStatus.Failed;
-        history.RespondedAt = DateTime.UtcNow.AddHours(7);
+        history.RespondedAt = DateTime.UtcNow;
         await uow.SaveChangesAsync(CancellationToken.None);
     }
 }

@@ -17,6 +17,8 @@ export const ActivityLogPage: React.FC = () => {
 
   const debouncedSearch = useDebounce(search, 500);
 
+
+
   const { data: pagedData, isLoading } = useActionHistoryQuery({
     page: currentPage,
     pageSize: limit,

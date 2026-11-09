@@ -2,11 +2,8 @@ export interface AuthUser {
   id: number;
   username: string;
   fullName: string;
+  email: string;
   role: string;
-  studentId: string;
-  classGroup: string;
-  institution: string;
-  token: string;
 }
 
 export interface LoginCredentials {
