@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Input, Select, Row, Col, Typography } from 'antd';
+import { Card, Input, Select, Flex, Typography } from 'antd';
 import { Search } from 'lucide-react';
 import { DEVICE_FILTER_OPTIONS, ACTION_FILTER_OPTIONS, STATUS_FILTER_OPTIONS } from './const';
 
@@ -28,9 +28,9 @@ export const ActionFilterBar: React.FC<ActionFilterBarProps> = ({
 }) => {
   return (
     <Card styles={{ body: { padding: 16 } }} style={{ borderRadius: 12, borderColor: '#e2e8f0' }}>
-      <Row gutter={[12, 12]} align="bottom">
+      <Flex align="flex-end" gap={12} wrap="nowrap" style={{ width: '100%' }}>
         {/* Ô tìm kiếm từ khóa */}
-        <Col xs={24} md={9}>
+        <div style={{ flex: 1, minWidth: 200 }}>
           <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
             Tìm kiếm lịch sử thao tác
           </Text>
@@ -41,10 +41,10 @@ export const ActionFilterBar: React.FC<ActionFilterBarProps> = ({
             placeholder="Tìm theo giờ (20:15, 20h), ngày (22/09), thiết bị, lệnh gửi, trạng thái..."
             allowClear
           />
-        </Col>
+        </div>
 
         {/* Lọc theo Thiết bị */}
-        <Col xs={24} sm={8} md={5}>
+        <div style={{ width: 170, flexShrink: 0 }}>
           <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
             Thiết bị
           </Text>
@@ -54,10 +54,10 @@ export const ActionFilterBar: React.FC<ActionFilterBarProps> = ({
             options={DEVICE_FILTER_OPTIONS}
             style={{ width: '100%' }}
           />
-        </Col>
+        </div>
 
         {/* Lọc theo Lệnh điều khiển */}
-        <Col xs={24} sm={8} md={5}>
+        <div style={{ width: 170, flexShrink: 0 }}>
           <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
             Lệnh điều khiển
           </Text>
@@ -67,10 +67,10 @@ export const ActionFilterBar: React.FC<ActionFilterBarProps> = ({
             options={ACTION_FILTER_OPTIONS}
             style={{ width: '100%' }}
           />
-        </Col>
+        </div>
 
         {/* Lọc theo Trạng thái thực thi */}
-        <Col xs={24} sm={8} md={5}>
+        <div style={{ width: 170, flexShrink: 0 }}>
           <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
             Trạng thái thực thi
           </Text>
@@ -80,8 +80,8 @@ export const ActionFilterBar: React.FC<ActionFilterBarProps> = ({
             options={STATUS_FILTER_OPTIONS}
             style={{ width: '100%' }}
           />
-        </Col>
-      </Row>
+        </div>
+      </Flex>
     </Card>
   );
 };
